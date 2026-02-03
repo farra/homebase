@@ -335,6 +335,61 @@ Is this worth the switch from current bash setup?
 
 ---
 
+## 10. Distrobox Layer 1: nix profile vs distrobox assemble
+
+### Question
+
+Should the "home" distrobox (Layer 1) use `nix profile` to manage its tools, or use distrobox-native tooling (`distrobox assemble` + dnf)?
+
+### Current Plan
+
+- Containerfile.slim pre-installs Nix
+- `just bootstrap` runs `nix profile install` for base tools (ripgrep, fd, etc.)
+- Nix manages both Layer 1 (distrobox tools) and Layer 2 (project shells)
+
+### Alternative
+
+- Containerfile installs Nix (still needed for `nix develop`)
+- Base tools installed via dnf, declared in `distrobox assemble` manifest
+- Nix used **only** for `nix develop` at project layer
+
+### Trade-offs
+
+| Aspect | nix profile | distrobox assemble + dnf |
+|--------|-------------|--------------------------|
+| Simplicity | More moving parts | Distrobox-native, simpler |
+| Cross-platform parity | Same as macOS (both use Nix) | macOS uses Nix, Linux uses dnf |
+| Package versions | Pinned, reproducible | Tied to Fedora release |
+| Disk usage | Nix store in $HOME | Standard RPM packages |
+| Debugging | Nix-specific issues | Standard Fedora tooling |
+
+### Argument for Change
+
+Nix shines at **per-repo isolation** (`nix develop`). Using it for the distrobox's own tools adds complexity without clear benefit. A distrobox per repo would be overkill, but Nix per repo is right-sized.
+
+Keeping Layer 1 distrobox-native means:
+- Fewer layers of abstraction
+- Easier debugging (standard Fedora)
+- Nix complexity contained to where it matters (project shells)
+
+### Argument Against Change
+
+macOS runs Nix natively for Layer 1 tools. If Linux uses dnf, you lose cross-platform symmetry. Tool versions may drift between platforms.
+
+### Recommendation
+
+**Needs testing.** Try both approaches on a clean Bazzite/WSL machine:
+1. Current: Nix profile for Layer 1
+2. Alternative: distrobox assemble + dnf for Layer 1, Nix only for Layer 2
+
+Compare complexity, disk usage, and whether version drift matters in practice.
+
+### Status
+
+**Open** — needs testing before deciding.
+
+---
+
 ## Summary
 
 ### Decided
