@@ -1,0 +1,12 @@
+# SSH Configuration
+# Note: SSH keys are retrieved from 1Password during chezmoi apply
+
+Host github.com
+    HostName github.com
+    User git
+    IdentityFile ~/.ssh/id_rsa
+    IdentitiesOnly yes
+
+Host *
+    AddKeysToAgent yes
+    IdentityFile ~/.ssh/id_rsa

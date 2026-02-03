@@ -1,0 +1,99 @@
+# ~/.zshrc - Homebase shell configuration
+
+# =============================================================================
+# Homebrew
+# =============================================================================
+{{ if eq .chezmoi.os "darwin" }}
+# macOS: Homebrew in /opt/homebrew (Apple Silicon) or /usr/local (Intel)
+if [ -f /opt/homebrew/bin/brew ]; then
+    eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [ -f /usr/local/bin/brew ]; then
+    eval "$(/usr/local/bin/brew shellenv)"
+fi
+{{ else }}
+# Linux: Homebrew in ~/.linuxbrew or /home/linuxbrew/.linuxbrew
+if [ -d "$HOME/.linuxbrew" ]; then
+    eval "$($HOME/.linuxbrew/bin/brew shellenv)"
+elif [ -d "/home/linuxbrew/.linuxbrew" ]; then
+    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+fi
+{{ end }}
+
+# =============================================================================
+# Nix
+# =============================================================================
+if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
+    . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
+fi
+
+# =============================================================================
+# SSH Agent
+# =============================================================================
+if [ -z "$SSH_AUTH_SOCK" ]; then
+    eval "$(ssh-agent -s)" > /dev/null
+    ssh-add ~/.ssh/id_rsa 2>/dev/null
+fi
+
+# =============================================================================
+# Path additions
+# =============================================================================
+# Doom Emacs
+export PATH="$HOME/.emacs.d/bin:$PATH"
+
+# Local binaries
+export PATH="$HOME/.local/bin:$PATH"
+
+# Nix profile (if using nix profile install)
+export PATH="$HOME/.nix-profile/bin:$PATH"
+
+# =============================================================================
+# direnv
+# =============================================================================
+if command -v direnv &> /dev/null; then
+    eval "$(direnv hook zsh)"
+fi
+
+# =============================================================================
+# Aliases
+# =============================================================================
+# Modern replacements
+if command -v eza &> /dev/null; then
+    alias ls='eza'
+    alias ll='eza -la'
+    alias la='eza -a'
+    alias lt='eza --tree'
+fi
+
+if command -v bat &> /dev/null; then
+    alias cat='bat --paging=never'
+fi
+
+# Git shortcuts
+alias gs='git status'
+alias gd='git diff'
+alias gl='git log --oneline -20'
+alias gp='git push'
+
+# Forge
+alias forge='cd ~/forge'
+
+# =============================================================================
+# Editor
+# =============================================================================
+export EDITOR="emacs"
+export VISUAL="emacs"
+
+# =============================================================================
+# History
+# =============================================================================
+HISTSIZE=10000
+SAVEHIST=10000
+HISTFILE=~/.zsh_history
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_SPACE
+
+# =============================================================================
+# Prompt (simple default - override with starship/oh-my-posh if installed)
+# =============================================================================
+PROMPT='%F{blue}%~%f %# '

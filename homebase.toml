@@ -1,0 +1,32 @@
+# homebase.toml - Single source of truth for tool definitions
+# Consumed by Brewfile (host) and justfile bootstrap (distrobox)
+
+[core]
+# Tools that should exist everywhere
+tools = [
+  "git",
+  "chezmoi",
+  "zsh",
+  "just",
+  "direnv",
+  "ripgrep",
+  "fd",
+  "fzf",
+  "bat",
+  "eza",
+  "jq",
+  "yq",
+  "delta",
+]
+
+# Password manager - choose one (not in core tools, installed separately)
+# Options: "1password-cli" or "bitwarden-cli"
+# See DECISIONS.md for comparison
+
+[macos]
+# Homebrew casks (GUI apps)
+casks = ["emacs"]
+
+[linux]
+# Additional tools for distrobox image
+extra = ["emacs"]
