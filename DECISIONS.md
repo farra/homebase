@@ -165,9 +165,9 @@ The `{{- -}}` syntax trims whitespace to avoid extra newlines.
 
 ---
 
-## 3. Dropbox: Keep or Drop? — DECIDED
+## 3. Dropbox: Keep or Drop? — OPEN
 
-### Decision: Keep for Forge Vault Only
+### Current Thinking: Keep for Forge Vault Only
 
 Dropbox is **no longer needed for bootstrap** (1Password handles that). But it's still useful for forge vault.
 
@@ -176,7 +176,7 @@ Dropbox is **no longer needed for bootstrap** (1Password handles that). But it's
 | Before | After |
 |--------|-------|
 | Bootstrap layer (SSH keys) | ~~Removed~~ → 1Password |
-| Forge vault storage | **Keep** |
+| Forge vault storage | **TBD** — Dropbox has issues on Bazzite |
 
 ### Forge Vault Use Case
 
@@ -185,14 +185,25 @@ The vault contains:
 - Images and diagrams
 - Large files that shouldn't be in git
 
-These sync via Dropbox to `~/Dropbox/Vault`, symlinked to `~/forge/vault`.
+Currently syncs via Dropbox to `~/Dropbox/Vault`, symlinked to `~/forge/vault`.
 
-### Alternative Considered
+### Open Issue: Dropbox on Bazzite
 
-- **Syncthing** — Self-hosted, no cloud dependency, but more setup
-- **Git LFS** — For binary files, but adds complexity
+Dropbox has reliability problems on Bazzite (immutable Fedora). This reopens the question of whether to keep Dropbox or migrate the vault elsewhere.
 
-**Decision:** Keep Dropbox for vault. It works, it's paid for, and forge is a separate concern from homebase.
+**Options:**
+
+| Option | Pros | Cons |
+|--------|------|------|
+| **Dropbox (status quo)** | Works on macOS/WSL, already set up | Unreliable on Bazzite, paid service |
+| **GitHub + Git LFS** | Single tool (git), works everywhere | Complexity, storage costs at scale, binary diffs are useless |
+| **Syncthing** | Self-hosted, no cloud dependency | More setup, need a "hub" device always on |
+| **iCloud/OneDrive** | May work better on Linux? | Vendor lock-in, same class of problem |
+
+**Needs resolution:**
+- [ ] Investigate Dropbox on Bazzite — Is it fixable? Flatpak version? Running in distrobox?
+- [ ] Estimate vault size — Is Git LFS viable cost-wise?
+- [ ] Decide if forge vault is even needed on Bazzite (maybe macOS-only is fine?)
 
 ### Bootstrap No Longer Needs Dropbox
 
@@ -206,7 +217,7 @@ New flow:
 1Password → chezmoi templates → SSH keys
 ```
 
-Dropbox can be installed later (post-bootstrap) when setting up forge.
+Dropbox can be installed later (post-bootstrap) when setting up forge — if we keep it.
 
 ---
 
@@ -342,9 +353,8 @@ Is this worth the switch from current bash setup?
 | Decision | Choice |
 |----------|--------|
 | Bootstrap approach | chezmoi-native (Option D) |
-| Password manager | **Open** — 1Password or Bitwarden, user's choice |
-| SSH key storage | Password manager (shared key) |
-| Dropbox role | Forge vault only, not bootstrap |
+| Password manager | 1Password |
+| SSH key storage | 1Password (shared key: `cautamaton-ssh-key`) |
 | Brewfile | Manual with validation |
 | Emacs on macOS | Homebrew Cask |
 | Distrobox image | Slim (bootstrap on first run) |
@@ -352,14 +362,21 @@ Is this worth the switch from current bash setup?
 | Windows native | Out of scope |
 | Shell | zsh interactive, bash scripts |
 
+### Open
+
+| Decision | Status |
+|----------|--------|
+| Dropbox / forge vault | Dropbox unreliable on Bazzite — evaluate alternatives |
+
 ### Next Actions
 
-1. **Choose password manager** — 1Password ($36/yr, cleaner) or Bitwarden (free, base64 workaround)
-2. **Store SSH keys** — In chosen password manager
-3. **Create SSH templates** — `private_dot_ssh/private_id_rsa.tmpl` and `id_rsa.pub.tmpl`
-4. **Configure secretspec** — Use same provider for runtime secrets
+1. ~~Choose password manager~~ — Done (1Password)
+2. ~~Store SSH keys~~ — Done (`cautamaton-ssh-key` in Private vault)
+3. ~~Create SSH templates~~ — Done (`private_id_rsa.tmpl`, `id_rsa.pub.tmpl`)
+4. **Configure secretspec** — Set up 1Password as provider for runtime secrets
 5. **Test on clean WSL Fedora** — Validates the whole approach
 6. **Test on clean Bazzite** — Validates distrobox strategy
+7. **Resolve Dropbox on Bazzite** — Fix it or migrate vault to Git LFS/Syncthing
 
 ### Simplified Bootstrap (Final)
 
