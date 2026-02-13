@@ -1,0 +1,3 @@
+["forge"]
+type = "git-repo"
+url = "git@github.com:farra/forge.git"

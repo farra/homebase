@@ -1,26 +1,19 @@
-# Brewfile - Host substrate
-# Keep in sync with homebase.toml [core]
+# Brewfile - Host substrate (Layer 0)
+# Keep in sync with homebase.toml [host]
+#
+# Dev tools (ripgrep, fd, fzf, bat, etc.) live in the container image now.
+# This file only installs what the host needs to bootstrap and manage dotfiles.
 
-# Core substrate
+# Core host tools
 brew "git"
 brew "chezmoi"
 brew "zsh"
 brew "just"
 brew "direnv"
 
-# Password manager CLI - uncomment ONE of these:
-# cask "1password-cli" if OS.mac?   # 1Password ($36/yr, cleaner chezmoi integration)
-# brew "bitwarden-cli"              # Bitwarden (free, needs base64 workaround for SSH keys)
-
-# Extended tools
-brew "ripgrep"
-brew "fd"
-brew "fzf"
-brew "bat"
-brew "eza"
-brew "jq"
-brew "yq"
-brew "git-delta"
+# 1Password CLI
+cask "1password-cli" if OS.mac?
+brew "1password-cli" unless OS.mac?
 
 # macOS only - GUI apps
 cask "emacs" if OS.mac?

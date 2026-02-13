@@ -1,13 +1,14 @@
-# Build and push homebase distrobox images
+# Build and push homebase distrobox image
 name: Build Images
 
 on:
   push:
     branches: [main]
     paths:
-      - 'Containerfile.slim'
+      - 'images/Containerfile'
+      - 'flake.nix'
+      - 'flake.lock'
       - 'homebase.toml'
-      - 'justfile'
   workflow_dispatch:
 
 env:
@@ -15,7 +16,7 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-slim:
+  build:
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -38,14 +39,14 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=raw,value=slim
-            type=sha,prefix=slim-
+            type=raw,value=latest
+            type=sha
 
-      - name: Build and push slim image
+      - name: Build and push image
         uses: docker/build-push-action@v5
         with:
           context: .
-          file: ./Containerfile.slim
+          file: ./images/Containerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

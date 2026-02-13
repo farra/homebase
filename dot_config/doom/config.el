@@ -44,10 +44,11 @@
 
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
-(setq org-directory "~/forge/")
-(setq +org-capture-todo-file "inbox/inbox.org")
-(setq +org-capture-notes-file "inbox/notes.org")
-(setq +org-capture-journal-file "journal/journal.org")
+(when (file-directory-p "~/forge/")
+  (setq org-directory "~/forge/")
+  (setq +org-capture-todo-file "inbox/inbox.org")
+  (setq +org-capture-notes-file "inbox/notes.org")
+  (setq +org-capture-journal-file "journal/journal.org"))
 
 
 
@@ -127,45 +128,50 @@
 
 ;; Temp load local copies of agent-shell/acp for testing
 
-(add-to-list 'load-path "/home/jaaron/dev/ref/acp.el")
-(add-to-list 'load-path "/home/jaaron/dev/ref/agent-shell")
+(when (file-directory-p "/home/jaaron/dev/ref/acp.el")
+  (add-to-list 'load-path "/home/jaaron/dev/ref/acp.el"))
+(when (file-directory-p "/home/jaaron/dev/ref/agent-shell")
+  (add-to-list 'load-path "/home/jaaron/dev/ref/agent-shell"))
 
 ;; Load Forge elisp modules
-(add-to-list 'load-path "~/forge/src/elisp")
-(require 'cautomaton-core)
-(require 'cautomaton-ai)
-(require 'cautomaton-capture)
-(require 'forge-backlog)
-(require 'forge-dev-status)
-(require 'forge-activity)
+(when (file-directory-p "~/forge/src/elisp")
+  (add-to-list 'load-path "~/forge/src/elisp")
+  (require 'cautomaton-core)
+  (require 'cautomaton-ai)
+  (require 'cautomaton-capture)
+  (require 'forge-backlog)
+  (require 'forge-dev-status)
+  (require 'forge-activity))
 
 (after! ox-latex
-  (load! "~/forge/src/templates/latex/install.el"))
+  (when (file-exists-p "~/forge/src/templates/latex/install.el")
+    (load! "~/forge/src/templates/latex/install.el")))
 
 
 (after! org
   ;; Consolidated org-capture templates for Forge system
-  (setq org-capture-templates
-        (append org-capture-templates
-                '(("d" "Daily Journal" entry
-                   (file+olp+datetree "~/forge/journal/journal.org")
-                   (file "~/forge/src/templates/daily-template.org")
-                   :empty-lines-before 1
-                   :jump-to-captured t)
-                  ("b" "Bookmark URL"
-                   plain (file+headline "~/forge/inbox/bookmarks.org" "Bookmarks")
-                   "%(org-cliplink-capture-with-topic)"
-                   :empty-lines 1)
-                  ("w" "Weekly Plan" entry
-                   (file+headline "~/forge/journal/weekly.org" "Weeks")
-                   (file "~/forge/src/templates/weekly-template.org")
-                   :empty-lines-before 1
-                   :jump-to-captured t)
-                  ("a" "AI Daily Assistant" plain
-                   (function cautomaton-copy-to-clipboard-target)
-                   (file "~/forge/src/templates/ai-daily-prompt.org")
-                   :immediate-finish t
-                   :jump-to-captured nil)))))
+  (when (file-directory-p "~/forge/")
+    (setq org-capture-templates
+          (append org-capture-templates
+                  '(("d" "Daily Journal" entry
+                     (file+olp+datetree "~/forge/journal/journal.org")
+                     (file "~/forge/src/templates/daily-template.org")
+                     :empty-lines-before 1
+                     :jump-to-captured t)
+                    ("b" "Bookmark URL"
+                     plain (file+headline "~/forge/inbox/bookmarks.org" "Bookmarks")
+                     "%(org-cliplink-capture-with-topic)"
+                     :empty-lines 1)
+                    ("w" "Weekly Plan" entry
+                     (file+headline "~/forge/journal/weekly.org" "Weeks")
+                     (file "~/forge/src/templates/weekly-template.org")
+                     :empty-lines-before 1
+                     :jump-to-captured t)
+                    ("a" "AI Daily Assistant" plain
+                     (function cautomaton-copy-to-clipboard-target)
+                     (file "~/forge/src/templates/ai-daily-prompt.org")
+                     :immediate-finish t
+                     :jump-to-captured nil))))))
 
 
 (defun org-cliplink-capture ()

@@ -1,0 +1,21 @@
+# Files that should NOT be copied to ~/ during chezmoi apply
+# Only dot_* and private_dot_* files are actual dotfile targets
+
+README.md
+BOOTSTRAP.md
+CLAUDE.md
+DECISIONS.md
+LICENSE
+
+# Build and config files
+Brewfile
+homebase.toml
+secretspec.toml
+justfile
+flake.nix
+flake.lock
+
+# Directories
+images
+bootstrap
+.github

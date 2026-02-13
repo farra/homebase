@@ -5,124 +5,121 @@ Machine substrate for consistent development environments across macOS, Bazzite 
 **Status:** Implementation
 **Repo:** `farra/homebase` (private)
 
+## Architecture
+
+```
+Layer 0: Host (OS-specific bootstrap)
+├── Bazzite:  Homebrew → chezmoi, just, direnv, 1password-cli
+├── WSL:      (future, same pattern)
+└── macOS:    (future, Homebrew + nix native)
+
+Layer 1: Homebase distrobox (baked image via Nix flake)
+├── All dev tools pre-installed (ripgrep, fd, fzf, bat, eza, etc.)
+├── Emacs (exported to host desktop)
+└── $HOME shared with host (chezmoi dotfiles visible in both)
+
+Layer 2: Per-project nix flakes (cautomaton-develops, out of scope)
+```
+
+## Prerequisites
+
+You need these items in your 1Password **Private** vault:
+
+| Item | Field | Purpose |
+|------|-------|---------|
+| `cautamaton-ssh-key` | `private key` | SSH private key |
+| `cautamaton-ssh-key` | `public key` | SSH public key |
+| `github-pat` | `credential` | GitHub PAT with `repo` + `read:packages` scopes |
+
 ## Quick Start
 
-### macOS
+### Bazzite (primary target)
+
+Transfer `bootstrap/bazzite.sh` to the machine and run it:
 
 ```bash
-# Install Homebrew
+bash bazzite.sh
+```
+
+See [BOOTSTRAP.md](./BOOTSTRAP.md) for the full walkthrough, verification steps, and troubleshooting.
+
+### macOS (future)
+
+```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# Bootstrap tools + SSH keys from Bitwarden
-brew install git chezmoi bitwarden-cli
-bw login && export BW_SESSION=$(bw unlock --raw)
-mkdir -p ~/.ssh && chmod 700 ~/.ssh
-bw get notes "ssh-keys/id_rsa" > ~/.ssh/id_rsa && chmod 600 ~/.ssh/id_rsa
-bw get notes "ssh-keys/id_rsa.pub" > ~/.ssh/id_rsa.pub && chmod 644 ~/.ssh/id_rsa.pub
-eval "$(ssh-agent -s)" && ssh-add ~/.ssh/id_rsa
-
-# Apply dotfiles + install tools
+brew install chezmoi 1password-cli
+eval "$(op signin)"
 chezmoi init --apply farra/homebase
 brew bundle --file=~/.local/share/chezmoi/Brewfile
-
-# Install Nix (for project-level shells)
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh
 ```
 
-### Bazzite / WSL (Fedora)
+## Workspace Layout
 
-```bash
-# Install Homebrew (to ~/.linuxbrew)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-
-# Bootstrap (same as macOS)
-brew install git chezmoi bitwarden-cli
-# ... SSH key setup same as above ...
-
-# Apply dotfiles
-chezmoi init --apply farra/homebase
-
-# Create distrobox with homebase image
-podman pull ghcr.io/farra/homebase:slim
-distrobox create --image ghcr.io/farra/homebase:slim --name home
-
-# First entry bootstraps tools
-distrobox enter home
-just bootstrap
-```
-
-## Architecture
-
-See `vault/devenv/homebase/README.md` in forge for full documentation.
+`chezmoi apply` sets up the workspace automatically:
 
 ```
-Layer 0: Homebrew (all platforms)
-Layer 1: Distrobox + Nix (Linux) or Nix native (macOS)
-Layer 2: Project-specific nix develop (cautomaton-develops)
+~/
+├── forge/              # Cloned via .chezmoiexternal.toml
+├── dev/
+│   ├── me/             # github.com/farra
+│   ├── jmt/            # github.com/jamandtea
+│   └── ref/            # Third-party / reference
+└── .ssh/               # SSH keys from 1Password templates
 ```
 
 ## Repository Structure
 
 ```
 .
-├── .chezmoi.toml.tmpl      # chezmoi config with platform detection
-├── homebase.toml           # Tool definitions (source of truth)
-├── Brewfile                # Host substrate tools
-├── Containerfile.slim      # Distrobox image (Nix-inside)
-├── justfile                # Orchestration commands
-├── secretspec.toml         # Runtime secrets declaration
-├── dot_config/
-│   └── doom/               # Doom Emacs config
-├── dot_gitconfig.tmpl      # Git config (templated)
-├── dot_zshrc.tmpl          # Shell config
+├── flake.nix                  # Nix flake (dev tools for container + macOS)
+├── flake.lock                 # Nix flake lock
+├── images/Containerfile       # Baked distrobox image
+├── bootstrap/bazzite.sh       # Layer 0 bootstrap for Bazzite
+├── homebase.toml              # Tool definitions (source of truth)
+├── Brewfile                   # Host substrate tools
+├── justfile                   # Orchestration commands
+├── secretspec.toml            # Runtime secrets declaration
+├── .chezmoi.toml.tmpl         # chezmoi config
+├── .chezmoiexternal.toml      # External repos (forge)
+├── .chezmoiignore             # Files excluded from chezmoi apply
+├── run_once_create-workspace.sh  # Creates ~/dev/{me,jmt,ref}
+├── dot_config/doom/           # Doom Emacs config
+├── dot_gitconfig.tmpl         # Git config (templated)
+├── dot_zshrc.tmpl             # Shell config
 └── private_dot_ssh/
-    └── config.tmpl         # SSH config (NOT keys)
+    ├── config.tmpl            # SSH config
+    ├── private_id_rsa.tmpl    # Private key (from 1Password)
+    └── id_rsa.pub.tmpl        # Public key (from 1Password)
 ```
 
 ## Commands
 
 ```bash
-just              # List available commands
-just apply        # Apply dotfiles via chezmoi
-just sync         # Full sync (pull + apply + tools)
-just bootstrap    # Install tools via nix profile (Linux distrobox)
-just build-slim   # Build slim distrobox image locally
-just test-slim    # Test slim image in throwaway distrobox
+just                    # List available commands
+just apply              # Apply dotfiles via chezmoi
+just sync               # Full sync (pull + apply + host tools)
+just build-image        # Build baked distrobox image
+just test-local         # Build + create test distrobox
+just distrobox-enter    # Enter homebase distrobox
+just dev                # Nix develop shell (macOS)
 ```
 
 ## Development
 
-### Initial Setup (one-time)
-
-```bash
-cd ~/dev/me/homebase
-
-# Create private GitHub repo
-gh repo create farra/homebase --private --source=. --push
-
-# Or manually:
-git commit -m "Initial scaffold"
-git remote add origin git@github.com:farra/homebase
-git push -u origin main
-```
-
-### Testing
-
-```bash
-# Test chezmoi apply locally (dry-run)
-chezmoi init --apply --dry-run ~/dev/me/homebase
-
-# Test distrobox image build
-just build-slim
-just test-slim
-```
-
 ### Making Changes
 
 ```bash
-# Edit dotfiles, then:
 just apply              # Apply locally
 just re-add             # Stage changes back to chezmoi source
 just push               # Commit and push
+```
+
+### Testing the Image
+
+```bash
+just build-image        # Build locally
+just test-local         # Create throwaway distrobox
+distrobox enter homebase-test
+# Verify: which emacs rg fd fzf bat just direnv chezmoi
 ```

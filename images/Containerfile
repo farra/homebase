@@ -1,0 +1,45 @@
+# Homebase baked image
+#
+# All dev tools pre-installed via Nix flake.
+# Use with distrobox on Bazzite/WSL.
+#
+# Build:
+#   podman build -t ghcr.io/farra/homebase:latest -f images/Containerfile .
+#
+# Run with distrobox:
+#   distrobox create --image ghcr.io/farra/homebase:latest --name home
+#   distrobox enter home
+
+FROM registry.fedoraproject.org/fedora-toolbox:41
+
+LABEL com.github.containers.toolbox="true"
+LABEL org.opencontainers.image.source="https://github.com/farra/homebase"
+LABEL org.opencontainers.image.description="Homebase development environment"
+
+# Install Nix using Determinate Systems installer
+# --init none: no systemd integration (not available during build)
+# --no-confirm: non-interactive
+# --extra-conf "sandbox = false": disable sandbox (can't set hostname in container builds)
+RUN curl -L https://install.determinate.systems/nix | sh -s -- install linux \
+    --no-confirm \
+    --init none \
+    --extra-conf "sandbox = false"
+
+# Set up environment for nix commands
+ENV PATH="/nix/var/nix/profiles/default/bin:$PATH"
+
+# Copy flake into image and install all tools
+COPY flake.nix flake.lock /tmp/homebase-flake/
+RUN cd /tmp/homebase-flake && \
+    nix profile install .#homebase-env \
+        --extra-experimental-features "nix-command flakes" && \
+    rm -rf /tmp/homebase-flake
+
+# Add nix profile to default PATH for all users
+RUN echo 'export PATH="/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$PATH"' > /etc/profile.d/nix.sh && \
+    echo 'export PATH="/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$PATH"' >> /etc/bashrc
+
+# Default shell
+ENV SHELL=/bin/zsh
+
+CMD ["/bin/zsh"]

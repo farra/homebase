@@ -1,7 +1,13 @@
 # justfile - Homebase orchestration commands
 
+registry := "ghcr.io/farra"
+image_name := "homebase"
+runtime := `command -v podman 2>/dev/null || command -v docker 2>/dev/null || echo "no-runtime"`
+
 default:
     @just --list
+
+# ── Dotfile Management ───────────────────────────────────────────────────────
 
 # Apply dotfiles via chezmoi
 apply:
@@ -11,50 +17,12 @@ apply:
 update:
     chezmoi update
 
-# Full sync (pull + apply + tools)
+# Full sync (pull + apply + host tools)
 sync:
     chezmoi update
     @if [ "$(uname)" = "Darwin" ]; then \
         brew bundle --file={{ justfile_directory() }}/Brewfile; \
-    else \
-        echo "On Linux, run: distrobox upgrade home && just bootstrap"; \
     fi
-
-# Bootstrap: install tools via nix profile (run inside distrobox)
-bootstrap:
-    #!/usr/bin/env bash
-    set -e
-    if [ -f ~/.homebase-bootstrapped ]; then
-        echo "Already bootstrapped. Re-running to update..."
-    fi
-    echo "Installing homebase tools via nix profile..."
-    nix profile install nixpkgs#{git,ripgrep,fd,fzf,bat,eza,jq,yq,delta,just,direnv,emacs}
-
-    # Export Emacs to host desktop
-    distrobox-export --app emacs 2>/dev/null || echo "Note: distrobox-export not available (not in distrobox?)"
-
-    touch ~/.homebase-bootstrapped
-    echo "Bootstrap complete. Tools installed to ~/.nix-profile/bin"
-
-# Validate Brewfile matches homebase.toml
-check-sync:
-    @echo "Checking Brewfile vs homebase.toml..."
-    @echo "TODO: implement validation script"
-
-# Build slim distrobox image locally
-build-slim:
-    podman build -t homebase:slim -f Containerfile.slim .
-
-# Test slim image (create throwaway distrobox)
-test-slim:
-    distrobox rm -f homebase-test || true
-    distrobox create --image homebase:slim --name homebase-test
-    distrobox enter homebase-test -- just bootstrap
-    @echo "Test with: distrobox enter homebase-test"
-
-# Enter distrobox (Linux only)
-enter:
-    distrobox enter home
 
 # Re-add changed dotfiles to chezmoi
 re-add:
@@ -67,3 +35,55 @@ push:
 # Doom Emacs sync (after config changes)
 doom-sync:
     ~/.emacs.d/bin/doom sync
+
+# ── Image Building ───────────────────────────────────────────────────────────
+
+# Build the homebase OCI image
+build-image:
+    {{runtime}} build \
+        -t {{registry}}/{{image_name}}:latest \
+        -f images/Containerfile .
+
+# Tag the image with a version
+tag-image version:
+    {{runtime}} tag {{registry}}/{{image_name}}:latest {{registry}}/{{image_name}}:{{version}}
+
+# Push latest image to registry
+push-image:
+    {{runtime}} push {{registry}}/{{image_name}}:latest
+
+# Build, tag, and push a release
+release version: build-image (tag-image version)
+    {{runtime}} push {{registry}}/{{image_name}}:latest
+    {{runtime}} push {{registry}}/{{image_name}}:{{version}}
+
+# ── Distrobox ────────────────────────────────────────────────────────────────
+
+# Create the homebase distrobox
+distrobox-create:
+    distrobox create --image {{registry}}/{{image_name}}:latest --name home
+
+# Enter the homebase distrobox
+distrobox-enter:
+    distrobox enter home
+
+# Remove the homebase distrobox
+distrobox-rm:
+    distrobox rm home --force
+
+# Build image and create distrobox for local testing
+test-local: build-image
+    -distrobox rm homebase-test --force
+    distrobox create --image {{registry}}/{{image_name}}:latest --name homebase-test
+    @echo "Created distrobox 'homebase-test'. Enter with: distrobox enter homebase-test"
+
+# ── Development ──────────────────────────────────────────────────────────────
+
+# Enter nix develop shell (macOS)
+dev:
+    nix develop
+
+# Run nix flake check
+check:
+    nix flake check
+

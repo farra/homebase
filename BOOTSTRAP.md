@@ -1,181 +1,163 @@
 # Bootstrap Guide
 
-This is the canonical walkthrough for bootstrapping a new machine with homebase.
+Canonical walkthrough for bootstrapping a new machine with homebase.
 
 ## Prerequisites
 
-Before you begin, ensure you have:
+1. **1Password account** with these items in your **Private** vault:
 
-1. **1Password account** with these items in your Private vault:
-   - `cautamaton-ssh-key` — SSH key (with `private key` and `public key` fields)
-   - `GITHUB_TOKEN` — GitHub personal access token
+   | Item | Field | Purpose |
+   |------|-------|---------|
+   | `cautamaton-ssh-key` | `private key` | SSH private key |
+   | `cautamaton-ssh-key` | `public key` | SSH public key |
+   | `github-pat` | `credential` | GitHub PAT with `repo` + `read:packages` scopes |
 
-2. **Network access** — Need to reach GitHub, Homebrew, and 1Password
+2. **Network access** to GitHub, Homebrew, and 1Password
 
-## Quick Reference
+## Bazzite (Primary Target)
 
-| Platform | Time | Reboots |
-|----------|------|---------|
-| macOS | ~10 min | 0 |
-| WSL (Fedora) | ~15 min | 0 |
-| Bazzite | ~15 min | 0 |
+### Getting the Script to the Machine
+
+Since the repo is private, you can't `curl` the bootstrap script. Options:
+- Copy-paste from another machine
+- USB drive
+- SCP from an already-bootstrapped machine
+- Dropbox / cloud storage
+
+### Running the Bootstrap
+
+```bash
+bash bazzite.sh
+```
+
+The script runs 5 idempotent phases, each guarded by a stamp file in `~/.homebase-bootstrap/`:
+
+**Phase 1: Homebrew** — Installs to `~/.linuxbrew` (no root, no rpm-ostree)
+
+**Phase 2: Host tools** — `brew install chezmoi just direnv git zsh 1password-cli`
+
+**Phase 3: 1Password** — `op signin` (opens browser for authentication)
+
+**Phase 4: Dotfiles** — Retrieves GitHub PAT from 1Password, runs `chezmoi init --apply` with PAT-embedded HTTPS URL. This:
+  - Clones the private repo via HTTPS (no SSH needed yet)
+  - Writes SSH keys to `~/.ssh/` from 1Password templates
+  - Applies all dotfiles (git config, zsh config, Doom Emacs config)
+  - Clones `~/forge` via `.chezmoiexternal.toml`
+  - Creates `~/dev/{me,jmt,ref}` via `run_once_` script
+
+**Phase 5: Distrobox** — Logs into GHCR with the PAT, pulls the baked image, creates distrobox `home`
+
+### After Bootstrap
+
+```bash
+# Enter the dev environment (all tools pre-installed)
+distrobox enter home
+
+# Export Emacs to the KDE desktop
+distrobox-export --app emacs
+
+# Verify tools
+which emacs rg fd fzf bat just direnv chezmoi
+```
+
+### Re-running
+
+The script is fully idempotent. Completed phases are skipped:
+
+```bash
+bash bazzite.sh    # Skips all completed phases
+```
+
+To re-run a specific phase, delete its stamp file:
+
+```bash
+ls ~/.homebase-bootstrap/    # See completed phases
+rm ~/.homebase-bootstrap/04-dotfiles    # Re-run dotfiles phase
+bash bazzite.sh
+```
 
 ---
 
-## Shared Steps (All Platforms)
+## macOS (Future)
 
-These steps are identical across macOS, WSL, and Bazzite.
+Manual steps until a bootstrap script is written.
 
-### Step 1: Install Homebrew
+### Steps
 
 ```bash
+# 1. Homebrew
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-```
-
-Follow the post-install instructions to add Homebrew to your PATH.
-
-**macOS:**
-```bash
 eval "$(/opt/homebrew/bin/brew shellenv)"
-```
 
-**Linux/WSL:**
-```bash
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-```
+# 2. Core tools + 1Password
+brew install chezmoi
+brew install --cask 1password-cli
 
-### Step 2: Install chezmoi and 1Password CLI
+# 3. Authenticate
+eval "$(op signin)"
 
-```bash
-brew install chezmoi 1password-cli
-```
-
-### Step 3: Authenticate to 1Password
-
-```bash
-eval $(op signin)
-```
-
-This opens a browser or prompts for your master password. You should now be able to run `op vault list` and see your vaults.
-
-### Step 4: Bootstrap with chezmoi
-
-```bash
+# 4. Dotfiles (SSH keys, forge clone, workspace dirs — all handled)
 chezmoi init --apply farra/homebase
-```
 
-This single command:
-- Clones the repo via HTTPS (no SSH needed yet)
-- Runs templates that fetch SSH keys from 1Password
-- Writes SSH keys to `~/.ssh/` with correct permissions
-- Applies all dotfiles (git config, zsh config, etc.)
-
-### Step 5: Verify SSH works
-
-```bash
-ssh -T git@github.com
-```
-
-Expected output: `Hi farra! You've successfully authenticated...`
-
-### Step 6: Install Homebrew packages
-
-```bash
+# 5. Remaining Homebrew packages
 brew bundle --file=~/.local/share/chezmoi/Brewfile
-```
 
----
-
-## Platform-Specific: macOS
-
-After the shared steps, macOS is done for the host substrate.
-
-### Optional: Install Nix (for project-level shells)
-
-```bash
+# 6. Nix (for project-level shells)
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh
 ```
 
-This enables `nix develop` for project-specific environments (see [cautomaton-develops](https://github.com/farra/cautomaton-develops)).
+On macOS there's no distrobox — Nix runs natively. Use `just dev` for a nix develop shell, or use per-project flakes via cautomaton-develops.
 
 ---
 
-## Platform-Specific: WSL (Fedora)
+## WSL / Fedora (Future)
 
-After the shared steps, set up the distrobox dev environment.
-
-### Step 7: Create the homebase distrobox
-
-```bash
-podman pull ghcr.io/farra/homebase:slim
-distrobox create --image ghcr.io/farra/homebase:slim --name home
-```
-
-### Step 8: Bootstrap inside distrobox
-
-```bash
-distrobox enter home
-just bootstrap
-```
-
-This installs Nix-based tools to `~/.nix-profile` inside the container. The tools persist across container recreations because `$HOME` is bind-mounted.
-
-### Step 9: Export Emacs to host (optional)
-
-From inside the distrobox:
-```bash
-distrobox-export --app emacs
-```
-
-Emacs will appear in your Windows Start menu via WSLg.
+Same flow as Bazzite. When ready, the `bazzite.sh` script should work on WSL Fedora with minimal changes (Homebrew path is the same).
 
 ---
 
-## Platform-Specific: Bazzite
+## What chezmoi apply Does
 
-Bazzite is an immutable Fedora variant. The flow is identical to WSL.
+A single `chezmoi apply` handles:
 
-After the shared steps:
+| What | How |
+|------|-----|
+| SSH keys | `private_dot_ssh/` templates → 1Password `onepasswordRead` |
+| Git config | `dot_gitconfig.tmpl` → templated with name/email |
+| Shell config | `dot_zshrc.tmpl` |
+| Doom Emacs config | `dot_config/doom/` |
+| Forge repo | `.chezmoiexternal.toml` → `git clone` to `~/forge` |
+| Workspace dirs | `run_once_create-workspace.sh` → `~/dev/{me,jmt,ref}` |
 
-### Step 7: Create the homebase distrobox
-
-```bash
-podman pull ghcr.io/farra/homebase:slim
-distrobox create --image ghcr.io/farra/homebase:slim --name home
-```
-
-### Step 8: Bootstrap inside distrobox
-
-```bash
-distrobox enter home
-just bootstrap
-```
-
-### Step 9: Export Emacs to host
-
-From inside the distrobox:
-```bash
-distrobox-export --app emacs
-```
-
-Emacs will appear in your desktop environment's application menu.
+Externals (forge clone) run after file templates, so SSH keys are already on disk when the git clone happens.
 
 ---
 
 ## Verification Checklist
 
-After bootstrap, verify everything works:
+### Host (Layer 0)
 
+- [ ] `brew --version` works
+- [ ] `op account list` shows your account
+- [ ] `ssh -T git@github.com` authenticates as `farra`
+- [ ] `ls -la ~/.ssh/id_rsa` shows permissions `600`
 - [ ] `git config user.name` returns your name
-- [ ] `git config user.email` returns your email
-- [ ] `ssh -T git@github.com` authenticates successfully
-- [ ] `chezmoi status` shows no uncommitted changes
-- [ ] `doom doctor` reports no critical issues (after Doom Emacs sync)
+- [ ] `chezmoi status` shows no pending changes
+- [ ] `~/forge/` exists and is a git repo
+- [ ] `~/dev/me/`, `~/dev/jmt/`, `~/dev/ref/` exist
 
-**Linux/WSL additional checks:**
+### Distrobox (Layer 1, Linux only)
+
 - [ ] `distrobox enter home` works
-- [ ] Inside distrobox: `which emacs` returns a path
-- [ ] Exported apps appear in host menu
+- [ ] `which emacs rg fd fzf bat just direnv chezmoi` — all found
+- [ ] `emacs --version` runs
+- [ ] `distrobox-export --app emacs` — Emacs appears in desktop menu
+- [ ] Doom Emacs loads without errors from missing `~/forge/` paths
+
+### Idempotency
+
+- [ ] Re-run `bash bazzite.sh` — all phases skip
+- [ ] Re-run `chezmoi apply` — no changes
 
 ---
 
@@ -184,147 +166,74 @@ After bootstrap, verify everything works:
 ### 1Password CLI won't authenticate
 
 ```bash
-# Check if signed in
-op account list
-
-# Re-authenticate
-eval $(op signin)
+op account list          # Check if signed in
+eval "$(op signin)"      # Re-authenticate
 ```
 
 ### SSH key permissions wrong
 
-chezmoi should set these automatically, but verify:
+chezmoi sets these automatically, but verify:
 ```bash
 ls -la ~/.ssh/
-# id_rsa should be 600
-# id_rsa.pub should be 644
+# id_rsa should be 600, id_rsa.pub should be 644
 ```
 
 ### chezmoi template errors
 
-Preview what chezmoi will do:
 ```bash
-chezmoi diff
-```
-
-Check template output:
-```bash
+chezmoi diff             # Preview what chezmoi will do
 chezmoi execute-template < ~/.local/share/chezmoi/private_dot_ssh/private_id_rsa.tmpl
 ```
 
 ### Distrobox image pull fails
 
-If ghcr.io is unreachable, build locally:
+If GHCR is unreachable or the image isn't published, build locally:
 ```bash
-just build-slim
-distrobox create --image localhost/homebase:slim --name home
+just build-image
+distrobox create --image ghcr.io/farra/homebase:latest --name home
+```
+
+### Forge clone fails during chezmoi apply
+
+If SSH keys aren't working yet (first apply), chezmoi external will fail. Fix:
+```bash
+# Verify SSH works first
+ssh -T git@github.com
+
+# Then re-apply
+chezmoi apply
 ```
 
 ---
 
-## Post-Bootstrap
+## Architecture Notes
 
-### Set up Doom Emacs
+### Why chezmoi clones via HTTPS
 
-```bash
-# macOS
-brew install --cask emacs
-git clone --depth 1 https://github.com/doomemacs/doomemacs ~/.config/emacs
-~/.config/emacs/bin/doom install
+`chezmoi init farra/homebase` uses HTTPS, not SSH. This is intentional — SSH keys don't exist until *after* `chezmoi apply` writes them. The bootstrap script uses a PAT-embedded URL for the private repo. After bootstrap, the remote can be switched to SSH:
 
-# Linux (inside distrobox)
-doom install
-```
-
-### Clone forge (optional)
-
-```bash
-git clone git@github.com:farra/forge.git ~/forge
-```
-
-### Configure runtime secrets
-
-For API keys (Claude, OpenAI, etc.), see `secretspec.toml`. These are injected at runtime, not stored in dotfiles.
-
----
-
-## Updating
-
-After initial bootstrap, keep things in sync:
-
-```bash
-just sync      # Pull latest dotfiles and apply
-just apply     # Apply without pulling
-just re-add    # Stage local changes back to chezmoi
-just push      # Commit and push dotfile changes
-```
-
----
-
-## Open Issues
-
-Things that need resolution or haven't been tested yet.
-
-### Blocking
-
-- [ ] **Nothing tested on clean machines** — The entire flow is theoretical until validated on fresh WSL Fedora, Bazzite, and macOS installs
-
-- [ ] **1Password CLI on Linux** — `brew install 1password-cli` may not work on Linux. Fedora may require the RPM:
-  ```bash
-  sudo rpm --import https://downloads.1password.com/linux/keys/1password.asc
-  sudo dnf install 1password-cli
-  ```
-  Need to test and update Step 2 accordingly.
-
-- [ ] **ghcr.io image not publishing** — Repo is private, so GitHub Actions may not be pushing to ghcr.io. Need to either:
-  - Make repo public (templates don't contain secrets)
-  - Configure GitHub Container Registry for private repos
-  - Document local build as primary path
-
-### Non-Blocking
-
-- [ ] **Doom Emacs install is manual** — Post-bootstrap section requires manual git clone and `doom install`. Could be automated in `just bootstrap` or a separate `just doom` command.
-
-- [ ] **secretspec + 1Password integration** — Runtime secrets (API keys) declared in `secretspec.toml` but no documentation on how to configure secretspec to use 1Password as provider.
-
-- [ ] **WSL Fedora availability** — Is "Fedora" in the Microsoft Store, or does it require manual import? Document the exact install path.
-
-- [ ] **Homebrew on immutable Linux** — Homebrew installs to `/home/linuxbrew/.linuxbrew` and may require `sudo` for initial setup. Bazzite's immutability might complicate this. Untested.
-
-- [ ] **Time estimates are guesses** — The "~10 min / ~15 min" estimates in Quick Reference are not based on actual testing.
-
-### Design Questions
-
-- [ ] **Should Doom Emacs config be in homebase or separate?** — Currently `dot_config/doom/` is here, but Doom itself requires manual install. Is this the right split?
-
-- [ ] **distrobox "home" vs project-specific containers** — Is one "home" distrobox the right model, or should there be per-project containers? (May be out of scope for homebase, belongs to cautomaton-develops)
-
----
-
-## Call-Outs
-
-Important notes for anyone using or maintaining this.
-
-### chezmoi clones via HTTPS
-
-The `chezmoi init farra/homebase` command uses HTTPS, not SSH. This is intentional — SSH keys don't exist yet. After `chezmoi apply`, the remote can be switched to SSH if desired:
 ```bash
 cd ~/.local/share/chezmoi
 git remote set-url origin git@github.com:farra/homebase.git
 ```
 
-### Private vault name is "Private", not "Personal"
+### Why the image is baked
 
-1Password's default vault is called "Private". All templates use `op://Private/...`. If you see "Personal" in examples, that's wrong.
-
-### SSH key is shared across machines
-
-One SSH key (`cautamaton-ssh-key`) is used everywhere. This is a simplicity trade-off. If a machine is compromised, rotate the key in 1Password and re-run `chezmoi apply` on all machines.
-
-### Homebrew on Linux goes to ~/.linuxbrew
-
-Unlike macOS (`/opt/homebrew`), Linux Homebrew installs to `/home/linuxbrew/.linuxbrew`. The PATH setup differs between platforms. The `dot_zshrc.tmpl` should handle this, but verify.
+The old flow required `just bootstrap` inside the distrobox to install tools via `nix profile`. The new baked image has everything pre-installed — `distrobox enter home` gives you a fully equipped environment immediately.
 
 ### distrobox shares $HOME
 
-The `home` distrobox bind-mounts your real `$HOME`. Changes inside the container (like files in `~/.nix-profile`) persist. This is intentional — tools installed via `just bootstrap` survive container recreation.
+The `home` distrobox bind-mounts your real `$HOME`. Dotfiles applied by chezmoi on the host are visible inside the container. SSH keys, git config, and Doom Emacs config all work in both contexts.
+
+### 1Password vault name
+
+1Password's default vault is "Private" (not "Personal"). All templates use `op://Private/...`.
+
+---
+
+## Open Issues
+
+- [ ] **1Password CLI via Homebrew on Linux** — `brew install 1password-cli` needs verification. Fallback: direct binary download to `~/.local/bin/`
+- [ ] **GHCR package visibility** — Private repo defaults to private packages. May need `podman login` (which the bootstrap script does) or package visibility settings in GitHub
+- [ ] **Nothing tested on clean machines** — Full flow is untested on fresh Bazzite, WSL, or macOS
+- [ ] **Doom Emacs install is manual** — Doom itself requires `doom install`; config is managed by chezmoi but the editor isn't bootstrapped automatically

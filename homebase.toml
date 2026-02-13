@@ -1,12 +1,20 @@
 # homebase.toml - Single source of truth for tool definitions
-# Consumed by Brewfile (host) and justfile bootstrap (distrobox)
+#
+# [host]      → Brewfile (Layer 0, all platforms)
+# [container] → flake.nix / images/Containerfile (Layer 1)
+# [workspace] → just setup-workspace (post-bootstrap)
 
-[core]
-# Tools that should exist everywhere
+[host]
+# Minimal tools for the host OS (Homebrew)
+tools = ["git", "chezmoi", "zsh", "just", "direnv"]
+# 1password-cli installed separately (cask on macOS, brew on Linux)
+
+[container]
+# All dev tools baked into the distrobox image (Nix flake)
 tools = [
   "git",
-  "chezmoi",
   "zsh",
+  "chezmoi",
   "just",
   "direnv",
   "ripgrep",
@@ -17,16 +25,16 @@ tools = [
   "jq",
   "yq",
   "delta",
+  "emacs",
 ]
 
-# Password manager - choose one (not in core tools, installed separately)
-# Options: "1password-cli" or "bitwarden-cli"
-# See DECISIONS.md for comparison
-
 [macos]
-# Homebrew casks (GUI apps)
-casks = ["emacs"]
+# Homebrew casks (GUI apps, macOS only)
+casks = ["emacs", "1password-cli"]
 
-[linux]
-# Additional tools for distrobox image
-extra = ["emacs"]
+[workspace]
+# Workspace layout — managed by chezmoi (externals + run_once script)
+# ~/forge       cloned via .chezmoiexternal.toml
+# ~/dev/me      github.com/farra
+# ~/dev/jmt     github.com/jamandtea
+# ~/dev/ref     third-party / reference
