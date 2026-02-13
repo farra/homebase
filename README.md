@@ -60,13 +60,30 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 
 ```
 ~/
-├── forge/              # Cloned via .chezmoiexternal.toml
+├── forge/                  # Cloned via .chezmoiexternal.toml (regular clone)
 ├── dev/
-│   ├── me/             # github.com/farra
-│   ├── jmt/            # github.com/jamandtea
-│   └── ref/            # Third-party / reference
-└── .ssh/               # SSH keys from 1Password templates
+│   ├── .worktrees/         # Bare clones (hidden, not worked in directly)
+│   ├── me/                 # github.com/farra — worktrees here
+│   ├── jmt/                # github.com/jamandtea
+│   ├── ref/                # Third-party / reference
+│   └── justfile            # Workspace commands (worktree lifecycle)
+└── .ssh/                   # SSH keys from 1Password templates
 ```
+
+### Git Worktree Model
+
+Bare clones live in `~/dev/.worktrees/`. Working copies are worktrees checked out into group dirs. Each worktree = one branch = one agent. The branch is the artifact; the directory is disposable.
+
+```bash
+cd ~/dev
+just clone farra/projectA              # bare clone → .worktrees/projectA.git
+just wt projectA fix-auth              # worktree → me/projectA-fix-auth
+just wt projectA add-search jmt        # worktree → jmt/projectA-add-search
+just wts                               # list all active worktrees
+just wt-rm me/projectA-fix-auth        # clean up (keeps branch)
+```
+
+Emacs + agents work in the copies under the group dirs. Forge does *not* follow this pattern — it's a regular clone at `~/forge`.
 
 ## Repository Structure
 
@@ -83,7 +100,8 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 ├── .chezmoi.toml.tmpl         # chezmoi config
 ├── .chezmoiexternal.toml      # External repos (forge)
 ├── .chezmoiignore             # Files excluded from chezmoi apply
-├── run_once_create-workspace.sh  # Creates ~/dev/{me,jmt,ref}
+├── run_once_create-workspace.sh  # Creates ~/dev/{.worktrees,me,jmt,ref}
+├── dev/justfile               # Workspace commands (→ ~/dev/justfile)
 ├── dot_config/doom/           # Doom Emacs config
 ├── dot_gitconfig.tmpl         # Git config (templated)
 ├── dot_zshrc.tmpl             # Shell config

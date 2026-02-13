@@ -1,0 +1,103 @@
+# justfile - Workspace commands for ~/dev/
+#
+# Manages bare clones in .worktrees/ and worktrees in group dirs.
+# Each worktree = one branch = one agent session.
+#
+# Groups:
+#   me/   — github.com/farra
+#   jmt/  — github.com/jamandtea
+#   ref/  — third-party / reference
+
+default:
+    @just --list
+
+# ── Clone Management ─────────────────────────────────────────────────────────
+
+# Bare-clone a repo into .worktrees/
+# Usage: just clone farra/projectA
+clone repo:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    name="$(basename '{{repo}}')"
+    dest="$HOME/dev/.worktrees/${name}.git"
+    if [[ -d "$dest" ]]; then
+        echo "Already cloned: $dest"
+        exit 0
+    fi
+    git clone --bare "git@github.com:{{repo}}.git" "$dest"
+    # Fetch all branches so worktrees can check them out
+    git -C "$dest" config remote.origin.fetch '+refs/heads/*:refs/remotes/origin/*'
+    git -C "$dest" fetch origin
+    echo "Cloned: $dest"
+
+# List bare clones
+clones:
+    @ls -1 "$HOME/dev/.worktrees/" 2>/dev/null | sed 's/\.git$//' || echo "(none)"
+
+# ── Worktree Management ─────────────────────────────────────────────────────
+
+# Create a worktree from a bare clone
+# Usage: just wt projectA fix-auth me
+wt project branch group="me":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bare="$HOME/dev/.worktrees/{{project}}.git"
+    dest="$HOME/dev/{{group}}/{{project}}-{{branch}}"
+    if [[ ! -d "$bare" ]]; then
+        echo "No bare clone found: $bare"
+        echo "Run: just clone <org>/{{project}}"
+        exit 1
+    fi
+    if [[ -d "$dest" ]]; then
+        echo "Worktree already exists: $dest"
+        exit 0
+    fi
+    git -C "$bare" worktree add "$dest" -b "{{branch}}"
+    echo "Created: $dest (branch: {{branch}})"
+
+# Create a worktree from an existing remote branch
+wt-checkout project branch group="me":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    bare="$HOME/dev/.worktrees/{{project}}.git"
+    dest="$HOME/dev/{{group}}/{{project}}-{{branch}}"
+    if [[ ! -d "$bare" ]]; then
+        echo "No bare clone found: $bare"
+        exit 1
+    fi
+    git -C "$bare" fetch origin
+    git -C "$bare" worktree add "$dest" "{{branch}}"
+    echo "Checked out: $dest (branch: {{branch}})"
+
+# Remove a worktree (keeps the branch)
+wt-rm path:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    target="$HOME/dev/{{path}}"
+    if [[ ! -d "$target" ]]; then
+        echo "Not found: $target"
+        exit 1
+    fi
+    # Find the bare repo that owns this worktree
+    bare="$(git -C "$target" rev-parse --git-common-dir 2>/dev/null)" || true
+    if [[ -n "$bare" && -d "$bare" ]]; then
+        git -C "$bare" worktree remove "$target"
+        echo "Removed worktree: $target"
+    else
+        echo "Not a git worktree: $target"
+        exit 1
+    fi
+
+# List all active worktrees across all bare clones
+wts:
+    #!/usr/bin/env bash
+    for bare in "$HOME/dev/.worktrees/"*.git; do
+        [[ -d "$bare" ]] || continue
+        name="$(basename "$bare" .git)"
+        trees="$(git -C "$bare" worktree list | tail -n +2)"
+        if [[ -n "$trees" ]]; then
+            echo "── $name ──"
+            echo "$trees"
+            echo ""
+        fi
+    done

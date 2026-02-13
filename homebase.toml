@@ -34,7 +34,8 @@ casks = ["emacs", "1password-cli"]
 
 [workspace]
 # Workspace layout — managed by chezmoi (externals + run_once script)
-# ~/forge       cloned via .chezmoiexternal.toml
-# ~/dev/me      github.com/farra
-# ~/dev/jmt     github.com/jamandtea
-# ~/dev/ref     third-party / reference
+# ~/forge              cloned via .chezmoiexternal.toml (regular clone, not worktree)
+# ~/dev/.worktrees/    bare clones (hidden, not worked in directly)
+# ~/dev/me/            github.com/farra (worktrees checked out here)
+# ~/dev/jmt/           github.com/jamandtea
+# ~/dev/ref/           third-party / reference

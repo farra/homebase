@@ -127,7 +127,8 @@ A single `chezmoi apply` handles:
 | Shell config | `dot_zshrc.tmpl` |
 | Doom Emacs config | `dot_config/doom/` |
 | Forge repo | `.chezmoiexternal.toml` → `git clone` to `~/forge` |
-| Workspace dirs | `run_once_create-workspace.sh` → `~/dev/{me,jmt,ref}` |
+| Workspace dirs | `run_once_create-workspace.sh` → `~/dev/{.worktrees,me,jmt,ref}` |
+| Workspace justfile | `dev/justfile` → `~/dev/justfile` (worktree lifecycle commands) |
 
 Externals (forge clone) run after file templates, so SSH keys are already on disk when the git clone happens.
 
@@ -144,7 +145,8 @@ Externals (forge clone) run after file templates, so SSH keys are already on dis
 - [ ] `git config user.name` returns your name
 - [ ] `chezmoi status` shows no pending changes
 - [ ] `~/forge/` exists and is a git repo
-- [ ] `~/dev/me/`, `~/dev/jmt/`, `~/dev/ref/` exist
+- [ ] `~/dev/.worktrees/`, `~/dev/me/`, `~/dev/jmt/`, `~/dev/ref/` exist
+- [ ] `~/dev/justfile` exists (worktree commands)
 
 ### Distrobox (Layer 1, Linux only)
 
@@ -158,6 +160,58 @@ Externals (forge clone) run after file templates, so SSH keys are already on dis
 
 - [ ] Re-run `bash bazzite.sh` — all phases skip
 - [ ] Re-run `chezmoi apply` — no changes
+
+---
+
+## Post-Bootstrap: Working with Worktrees
+
+After bootstrap, use the workspace justfile at `~/dev/justfile` to manage projects via git worktrees. Bare clones live hidden in `~/dev/.worktrees/`; working copies are checked out into group dirs where Emacs and agents operate.
+
+### First-time setup for a project
+
+```bash
+cd ~/dev
+just clone farra/homebase          # bare clone → .worktrees/homebase.git
+just clone farra/agentboxes        # bare clone → .worktrees/agentboxes.git
+just clone jamandtea/some-project  # bare clone → .worktrees/some-project.git
+```
+
+### Starting work (one worktree per task/agent)
+
+```bash
+cd ~/dev
+just wt homebase fix-auth          # → me/homebase-fix-auth (new branch)
+just wt homebase add-search        # → me/homebase-add-search (new branch)
+just wt some-project refactor jmt  # → jmt/some-project-refactor
+```
+
+Each worktree gets its own branch. Open a persp-mode workspace in Emacs for each, spawn an agent-shell session, and the agent works in isolation.
+
+### Checking status
+
+```bash
+cd ~/dev
+just wts        # list all active worktrees across all bare clones
+just clones     # list all bare clones
+```
+
+### Finishing work
+
+```bash
+cd ~/dev
+just wt-rm me/homebase-fix-auth   # removes worktree, keeps branch
+```
+
+The branch and any pushed commits survive. The directory is disposable.
+
+### What's next
+
+The worktree justfile handles the git plumbing. The Emacs layer (elisp, likely `forge-agent-worktree.el`) will wrap this with:
+- `forge-agent-start` — prompts for project + task, creates worktree + persp workspace + agent session
+- `forge-agent-finish` — commits, pushes, cleans up worktree + workspace
+- `forge-agent-list` — dashboard of active agent worktrees and their status
+
+Forge stays a regular clone at `~/forge` — it doesn't follow the worktree pattern.
 
 ---
 
