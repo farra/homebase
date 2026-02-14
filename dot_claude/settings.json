@@ -1,5 +1,6 @@
 {
   "enabledPlugins": {
-    "rust-analyzer-lsp@claude-plugins-official": true
+    "rust-analyzer-lsp@claude-plugins-official": true,
+    "gongfu@gongfu-claude-code": true
   }
 }

@@ -143,6 +143,12 @@
   (require 'forge-dev-status)
   (require 'forge-activity))
 
+;; J&T Project Elisp
+(use-package! gongfu-mode
+  :when (file-directory-p "~/dev/jmt/gongfu/tools/emacs/")
+  :load-path "~/dev/jmt/gongfu/tools/emacs/"
+  :mode "\\.gf\\'")
+
 (after! ox-latex
   (when (file-exists-p "~/forge/src/templates/latex/install.el")
     (load! "~/forge/src/templates/latex/install.el")))
@@ -283,14 +289,26 @@
         "C-c / x" #'agent-shell-openai-start-codex
         "C-c / g" #'agent-shell-google-start-gemini))
 
-;; Devbox integration for agent-shell
-;; Automatically use devbox environment if project has devbox.json
+;; Dev environment integration for agent-shell
+;; Automatically use nix/devbox environment if project has flake.nix or devbox.json
+;; Priority: flake.nix > devbox.json (flake.nix is the newer preferred approach)
+;;
 ;; Note: devbox run doesn't work because child processes (claude, bash)
 ;; don't inherit the devbox environment. We use devbox shellenv instead.
 ;;
 ;; We advise each provider's `make-*-client` function (not `agent-shell`)
 ;; because that's where the command variable is actually read. The client-maker
 ;; is called lazily, after any `let` bindings on `agent-shell` would have exited.
+
+(defun +agent-shell--nix-wrap-command (orig-command project-root)
+  "Wrap ORIG-COMMAND to run inside nix develop shell for PROJECT-ROOT."
+  (let ((cmd (if (listp orig-command) (car orig-command) orig-command))
+        (params (if (listp orig-command) (cdr orig-command) nil)))
+    (list "bash" "-c"
+          (format "cd %s && nix develop --command %s %s"
+                  (shell-quote-argument project-root)
+                  cmd
+                  (mapconcat #'shell-quote-argument params " ")))))
 
 (defun +agent-shell--devbox-wrap-command (orig-command project-root)
   "Wrap ORIG-COMMAND to run inside devbox shell for PROJECT-ROOT."
@@ -302,37 +320,58 @@
                   cmd
                   (mapconcat #'shell-quote-argument params " ")))))
 
-(defun +agent-shell--with-devbox-env (command-var orig-fn &rest args)
-  "Run ORIG-FN with COMMAND-VAR wrapped for devbox if project has devbox.json."
+(defun +agent-shell--with-devenv (command-var orig-fn &rest args)
+  "Run ORIG-FN with COMMAND-VAR wrapped for nix/devbox if project has flake.nix or devbox.json.
+Skips wrapping if already inside a nix shell (e.g., via direnv)."
   (let* ((project-root (or (projectile-project-root) default-directory))
-         (devbox-json (expand-file-name "devbox.json" project-root)))
-    (if (file-exists-p devbox-json)
-        (let ((wrapped (+agent-shell--devbox-wrap-command
-                        (symbol-value command-var) project-root)))
-          (progv (list command-var) (list wrapped)
-            (apply orig-fn args)))
-      (apply orig-fn args))))
+         (flake-nix (expand-file-name "flake.nix" project-root))
+         (devbox-json (expand-file-name "devbox.json" project-root))
+         ;; IN_NIX_SHELL is set by nix develop/nix-shell
+         (in-nix-shell (getenv "IN_NIX_SHELL"))
+         ;; DEVBOX_PACKAGES_DIR is set by devbox shell/shellenv
+         (in-devbox-shell (getenv "DEVBOX_PACKAGES_DIR")))
+    (cond
+     ;; Already in nix shell (via direnv or manual) - no wrapping needed
+     ((and in-nix-shell (file-exists-p flake-nix))
+      (apply orig-fn args))
+     ;; Already in devbox shell - no wrapping needed
+     ((and in-devbox-shell (file-exists-p devbox-json))
+      (apply orig-fn args))
+     ;; flake.nix takes precedence
+     ((file-exists-p flake-nix)
+      (let ((wrapped (+agent-shell--nix-wrap-command
+                      (symbol-value command-var) project-root)))
+        (progv (list command-var) (list wrapped)
+          (apply orig-fn args))))
+     ;; Fall back to devbox.json
+     ((file-exists-p devbox-json)
+      (let ((wrapped (+agent-shell--devbox-wrap-command
+                      (symbol-value command-var) project-root)))
+        (progv (list command-var) (list wrapped)
+          (apply orig-fn args))))
+     ;; No dev environment, run as-is
+     (t (apply orig-fn args)))))
 
 ;; Claude (Anthropic)
-(defun +agent-shell--claude-client-with-devbox (orig-fn &rest args)
-  "Wrap Claude client creation for devbox."
-  (apply #'+agent-shell--with-devbox-env
+(defun +agent-shell--claude-client-with-devenv (orig-fn &rest args)
+  "Wrap Claude client creation for nix/devbox."
+  (apply #'+agent-shell--with-devenv
          'agent-shell-anthropic-claude-command orig-fn args))
-(advice-add 'agent-shell-anthropic-make-claude-client :around #'+agent-shell--claude-client-with-devbox)
+(advice-add 'agent-shell-anthropic-make-claude-client :around #'+agent-shell--claude-client-with-devenv)
 
 ;; Codex (OpenAI)
-(defun +agent-shell--codex-client-with-devbox (orig-fn &rest args)
-  "Wrap Codex client creation for devbox."
-  (apply #'+agent-shell--with-devbox-env
+(defun +agent-shell--codex-client-with-devenv (orig-fn &rest args)
+  "Wrap Codex client creation for nix/devbox."
+  (apply #'+agent-shell--with-devenv
          'agent-shell-openai-codex-command orig-fn args))
-(advice-add 'agent-shell-openai-make-codex-client :around #'+agent-shell--codex-client-with-devbox)
+(advice-add 'agent-shell-openai-make-codex-client :around #'+agent-shell--codex-client-with-devenv)
 
 ;; Gemini (Google)
-(defun +agent-shell--gemini-client-with-devbox (orig-fn &rest args)
-  "Wrap Gemini client creation for devbox."
-  (apply #'+agent-shell--with-devbox-env
+(defun +agent-shell--gemini-client-with-devenv (orig-fn &rest args)
+  "Wrap Gemini client creation for nix/devbox."
+  (apply #'+agent-shell--with-devenv
          'agent-shell-google-gemini-command orig-fn args))
-(advice-add 'agent-shell-google-make-gemini-client :around #'+agent-shell--gemini-client-with-devbox)
+(advice-add 'agent-shell-google-make-gemini-client :around #'+agent-shell--gemini-client-with-devenv)
 
 ;; Agent Shell Sidebar - treemacs-style persistent side panel
 ;; Survives C-x 1 (delete-other-windows) like treemacs does
