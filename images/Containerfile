@@ -40,7 +40,12 @@ RUN cd /tmp/homebase-flake && \
 RUN echo 'export PATH="/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$PATH"' > /etc/profile.d/nix.sh && \
     echo 'export PATH="/nix/var/nix/profiles/default/bin:$HOME/.nix-profile/bin:$PATH"' >> /etc/bashrc
 
-# Default shell
-ENV SHELL=/bin/zsh
+# Make Nix-installed zsh available at standard paths
+# Distrobox inherits host $SHELL (e.g. /usr/bin/zsh) — it must resolve inside the container
+RUN ln -sf /nix/var/nix/profiles/default/bin/zsh /usr/bin/zsh && \
+    ln -sf /nix/var/nix/profiles/default/bin/zsh /bin/zsh && \
+    echo /usr/bin/zsh >> /etc/shells
 
-CMD ["/bin/zsh"]
+ENV SHELL=/usr/bin/zsh
+
+CMD ["/usr/bin/zsh"]
