@@ -67,14 +67,25 @@ info "Phase 2: Host tools"
 if stamp_check "02-host-tools"; then
     skip "Host tools already installed"
 else
-    brew install chezmoi just direnv git zsh 1password-cli
+    # Install packages (|| true: brew returns non-zero on link conflicts)
+    brew install chezmoi just direnv git zsh 1password-cli || true
+
+    # Verify all required tools are actually available
+    for cmd in chezmoi just direnv git zsh op; do
+        if ! command -v "$cmd" &>/dev/null; then
+            echo "ERROR: $cmd not found after brew install. Check brew output above."
+            exit 1
+        fi
+    done
+
     # Set zsh as default shell (distrobox inherits host $SHELL)
     if [[ "$SHELL" != *zsh ]]; then
-        ZSH_PATH="$(which zsh)"
-        # Ensure our zsh is in /etc/shells
-        grep -qxF "$ZSH_PATH" /etc/shells 2>/dev/null || echo "$ZSH_PATH" | sudo tee -a /etc/shells
-        chsh -s "$ZSH_PATH"
-        ok "Default shell set to $ZSH_PATH"
+        ZSH_PATH="$(command -v zsh)"
+        if [[ -f /etc/shells ]]; then
+            grep -qxF "$ZSH_PATH" /etc/shells 2>/dev/null || \
+                (echo "$ZSH_PATH" | sudo tee -a /etc/shells 2>/dev/null || true)
+        fi
+        chsh -s "$ZSH_PATH" || warn "chsh failed — set shell manually: chsh -s $ZSH_PATH"
     fi
     stamp_done "02-host-tools"
     ok "Host tools installed"
