@@ -99,9 +99,16 @@ if stamp_check "03-op-auth"; then
     skip "1Password already authenticated"
 fi
 
-# Always ensure we have a live session (tokens expire)
-if ! op account list &>/dev/null 2>&1; then
-    echo "  Please sign in to 1Password (this will open a browser)..."
+# Add account if none configured (interactive — prompts must be visible)
+if ! op account list 2>/dev/null | grep -q .; then
+    echo "  No 1Password accounts configured."
+    echo "  Follow the prompts to add your account:"
+    op account add
+fi
+
+# Sign in (tokens expire, so always check)
+if ! op whoami &>/dev/null 2>&1; then
+    echo "  Signing in to 1Password..."
     eval "$(op signin)"
 fi
 
