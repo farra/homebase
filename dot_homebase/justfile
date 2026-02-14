@@ -14,11 +14,23 @@ default:
 # ── First-Time Setup ─────────────────────────────────────────────────────────
 
 # Full first-time setup (run once after entering a new container)
-setup: doom-install install-agents
+setup: setup-workspace doom-install install-agents
     @echo ""
     @echo "Setup complete!"
+    @echo "  - Workspace directories created"
     @echo "  - Doom Emacs installed (run 'doom sync' after config changes)"
     @echo "  - AI agents installed (claude, codex, gemini)"
+
+# ── Workspace ──────────────────────────────────────────────────────────────
+
+# Create workspace directory structure
+setup-workspace:
+    @echo "Creating workspace directories..."
+    mkdir -p ~/dev/.worktrees ~/dev/me ~/dev/jmt ~/dev/ref
+    @echo "  ~/dev/.worktrees/  — bare clones"
+    @echo "  ~/dev/me/          — github.com/farra"
+    @echo "  ~/dev/jmt/         — github.com/jamandtea"
+    @echo "  ~/dev/ref/         — third-party / reference"
 
 # ── Doom Emacs ───────────────────────────────────────────────────────────────
 

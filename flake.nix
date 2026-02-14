@@ -43,7 +43,7 @@
           lazygit
 
           # Shell
-          oh-my-posh
+          starship
           atuin
           shellcheck
           tmux
