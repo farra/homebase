@@ -55,6 +55,14 @@ if stamp_check "02-host-tools"; then
     skip "Host tools already installed"
 else
     brew install chezmoi just direnv git zsh 1password-cli
+    # Set zsh as default shell (distrobox inherits host $SHELL)
+    if [[ "$SHELL" != *zsh ]]; then
+        ZSH_PATH="$(which zsh)"
+        # Ensure our zsh is in /etc/shells
+        grep -qxF "$ZSH_PATH" /etc/shells 2>/dev/null || echo "$ZSH_PATH" | sudo tee -a /etc/shells
+        chsh -s "$ZSH_PATH"
+        ok "Default shell set to $ZSH_PATH"
+    fi
     stamp_done "02-host-tools"
     ok "Host tools installed"
 fi
