@@ -1,6 +1,8 @@
 {
   "enabledPlugins": {
     "rust-analyzer-lsp@claude-plugins-official": true,
-    "gongfu@gongfu-claude-code": true
-  }
+    "gongfu@gongfu-claude-code": true,
+    "backlog@dev-agent-backlog": true
+  },
+  "skipDangerousModePermissionPrompt": true
 }

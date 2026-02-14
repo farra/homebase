@@ -1,2 +1,4 @@
+personality = "pragmatic"
+
 [notice]
 hide_full_access_warning = true

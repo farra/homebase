@@ -5,10 +5,23 @@
       {
         "scope": "user",
         "installPath": "",
+        "version": "1.0.0"
+      }
+    ],
+    "backlog@dev-agent-backlog": [
+      {
+        "scope": "user",
+        "installPath": "",
         "version": "1.0.0",
-        "installedAt": "2025-12-30T14:50:08.848Z",
-        "lastUpdated": "2025-12-30T14:50:08.848Z",
-        "isLocal": true
+        "gitCommitSha": "6e7f4323a5a8fecad225a6c4e921d0034a1f0201"
+      }
+    ],
+    "gongfu@gongfu-claude-code": [
+      {
+        "scope": "user",
+        "installPath": "",
+        "version": "1.4.0",
+        "gitCommitSha": "a01a6b1fc889a77b98727d95dc8727dcbb7a8d3e"
       }
     ]
   }
