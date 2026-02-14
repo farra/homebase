@@ -20,9 +20,22 @@ mkdir -p "$STAMP_DIR"
 info()  { echo -e "\033[1;34m==>\033[0m \033[1m$*\033[0m"; }
 ok()    { echo -e "\033[1;32m  ✓\033[0m $*"; }
 skip()  { echo -e "\033[1;33m  →\033[0m $* (already done)"; }
+warn()  { echo -e "\033[1;31m  !\033[0m $*"; }
 
 stamp_done() { touch "$STAMP_DIR/$1"; }
 stamp_check() { [[ -f "$STAMP_DIR/$1" ]]; }
+
+# Detect Homebrew install path (handles both ~/.linuxbrew and /home/linuxbrew)
+brew_shellenv() {
+    if [[ -d "$HOME/.linuxbrew" ]]; then
+        eval "$("$HOME/.linuxbrew/bin/brew" shellenv)"
+    elif [[ -d "/home/linuxbrew/.linuxbrew" ]]; then
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    else
+        warn "Homebrew not found in expected locations"
+        return 1
+    fi
+}
 
 # ── Phase 1: Homebrew ────────────────────────────────────────────────────────
 
@@ -36,15 +49,14 @@ else
     else
         /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
     fi
-    # Ensure brew is on PATH for the rest of this script
-    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    brew_shellenv
     stamp_done "01-homebrew"
     ok "Homebrew installed"
 fi
 
 # Make sure brew is on PATH even if phase was already stamped
 if ! command -v brew &>/dev/null; then
-    eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+    brew_shellenv
 fi
 
 # ── Phase 2: Host tools ─────────────────────────────────────────────────────
@@ -100,14 +112,20 @@ else
     # Retrieve GitHub PAT from 1Password
     GITHUB_PAT="$(op item get "github-pat" --fields label="credential")"
 
-    # chezmoi init with PAT-embedded HTTPS URL (private repo, no SSH needed yet)
-    chezmoi init --apply "https://${GITHUB_PAT}@github.com/farra/homebase.git"
+    # chezmoi init with HTTPS URL (private repo, no SSH needed yet)
+    # Use GIT_ASKPASS to avoid PAT appearing in process args
+    export GIT_ASKPASS="$STAMP_DIR/.git-askpass"
+    printf '#!/bin/sh\necho "%s"\n' "$GITHUB_PAT" > "$GIT_ASKPASS"
+    chmod 700 "$GIT_ASKPASS"
+    chezmoi init --apply "https://farra@github.com/farra/homebase.git"
+    rm -f "$GIT_ASKPASS"
+    unset GIT_ASKPASS
 
     # Verify SSH key landed
     if [[ -f "$HOME/.ssh/id_rsa" ]]; then
         ok "SSH private key installed"
     else
-        echo "WARNING: ~/.ssh/id_rsa not found after chezmoi apply"
+        warn "~/.ssh/id_rsa not found after chezmoi apply"
     fi
 
     stamp_done "04-dotfiles"
@@ -139,23 +157,38 @@ fi
 
 info "Phase 6: Distrobox container"
 
+# Verify required tools are available (podman and distrobox ship with Bazzite)
+for cmd in podman distrobox; do
+    if ! command -v "$cmd" &>/dev/null; then
+        echo "ERROR: $cmd not found. It should be pre-installed on Bazzite."
+        echo "Install it or check your PATH."
+        exit 1
+    fi
+done
+
 if stamp_check "06-distrobox"; then
     skip "Distrobox 'home' already created"
 else
-    # Retrieve PAT again (may have been cleared from env)
-    GITHUB_PAT="$(op item get "github-pat" --fields label="credential")"
+    # Check if container already exists (stamp may have been deleted)
+    if podman container exists home 2>/dev/null; then
+        ok "Distrobox 'home' already exists (re-stamping)"
+        stamp_done "06-distrobox"
+    else
+        # Retrieve PAT again (may have been cleared from env)
+        GITHUB_PAT="$(op item get "github-pat" --fields label="credential")"
 
-    # Login to GHCR for private image pull
-    echo "$GITHUB_PAT" | podman login ghcr.io -u farra --password-stdin
+        # Login to GHCR for private image pull
+        echo "$GITHUB_PAT" | podman login ghcr.io -u farra --password-stdin
 
-    # Pull the baked image
-    podman pull ghcr.io/farra/homebase:latest
+        # Pull the baked image
+        podman pull ghcr.io/farra/homebase:latest
 
-    # Create distrobox (--home shares host $HOME)
-    distrobox create --image ghcr.io/farra/homebase:latest --name home
+        # Create distrobox (--home shares host $HOME)
+        distrobox create --image ghcr.io/farra/homebase:latest --name home
 
-    stamp_done "06-distrobox"
-    ok "Distrobox 'home' created"
+        stamp_done "06-distrobox"
+        ok "Distrobox 'home' created"
+    fi
 fi
 
 # ── Done ─────────────────────────────────────────────────────────────────────
@@ -165,8 +198,8 @@ info "Bootstrap complete!"
 echo ""
 echo "  Next steps:"
 echo "    1. distrobox enter home"
-echo "    2. distrobox-export --app emacs"
-echo "    3. just setup-workspace  (future — clone repos, set up ~/dev)"
+echo "    2. homebase setup        (workspace dirs + Doom Emacs + AI agents)"
+echo "    3. homebase doom-export  (add Emacs to KDE desktop)"
 echo ""
 echo "  To re-run any phase, delete its stamp file:"
 echo "    ls $STAMP_DIR/"

@@ -9,7 +9,7 @@
 
 registry := "ghcr.io/farra"
 image_name := "homebase"
-runtime := `command -v podman 2>/dev/null || command -v docker 2>/dev/null || echo "no-runtime"`
+runtime := `command -v podman 2>/dev/null || command -v docker 2>/dev/null || echo ""`
 
 default:
     @just --list
@@ -17,7 +17,7 @@ default:
 # ── Image Building ───────────────────────────────────────────────────────
 
 # Build the homebase OCI image
-build-image:
+build-image: _require-runtime
     {{runtime}} build \
         -t {{registry}}/{{image_name}}:latest \
         -f images/Containerfile .
@@ -60,3 +60,13 @@ check:
 # Enter nix develop shell (macOS native)
 dev:
     nix develop
+
+# ── Helpers ────────────────────────────────────────────────────────────
+
+# Verify container runtime is available
+_require-runtime:
+    #!/usr/bin/env bash
+    if [[ -z "{{runtime}}" ]]; then
+        echo "ERROR: Neither podman nor docker found. Install one first."
+        exit 1
+    fi
