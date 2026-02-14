@@ -1,8 +1,8 @@
 [user]
-	name = {{ .name }}
-	email = {{ .email }}
+	name = {{ .name | quote }}
+	email = {{ .email | quote }}
 [github]
-	user = {{ .github_user }}
+	user = {{ .github_user | quote }}
 [init]
 	defaultBranch = main
 [pull]
