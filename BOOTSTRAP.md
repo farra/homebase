@@ -8,7 +8,7 @@ Canonical walkthrough for bootstrapping a new machine with homebase.
 
    | Item                      | Field/Files                | Purpose                                         |
    |---------------------------|----------------------------|-------------------------------------------------|
-   | `cautamaton-ssh-key`      | `private key`, `public key`| SSH key pair                                    |
+   | `cautomaton-ssh-key`      | `private key`, `public key`| SSH key pair                                    |
    | `github-pat`              | `credential`               | GitHub PAT with `repo` + `read:packages` scopes |
    | `cautomaton-homebase-gpg` | `public.asc`, `secret.asc` | GPG key for encrypting `~/.authinfo.gpg`        |
 

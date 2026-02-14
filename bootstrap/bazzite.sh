@@ -6,7 +6,7 @@
 #
 # Prerequisites:
 #   - 1Password account with these items in the Private vault:
-#     - cautamaton-ssh-key (fields: "private key", "public key")
+#     - cautomaton-ssh-key (fields: "private key", "public key")
 #     - github-pat (field: "credential") — PAT with repo + read:packages scopes
 #     - cautomaton-homebase-gpg (files: public.asc, secret.asc) — GPG key for authinfo
 #
@@ -113,11 +113,11 @@ if ! op whoami &>/dev/null 2>&1; then
 fi
 
 # Verify we can read from the vault
-if op item get "cautamaton-ssh-key" --fields label="private key" &>/dev/null 2>&1; then
+if op item get "cautomaton-ssh-key" --fields label="private key" &>/dev/null 2>&1; then
     ok "1Password session active"
     stamp_done "03-op-auth"
 else
-    echo "ERROR: Cannot read from 1Password vault. Is 'cautamaton-ssh-key' in Private vault?"
+    echo "ERROR: Cannot read from 1Password vault. Is 'cautomaton-ssh-key' in Private vault?"
     exit 1
 fi
 

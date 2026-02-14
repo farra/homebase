@@ -354,7 +354,7 @@ Is this worth the switch from current bash setup?
 |----------|--------|
 | Bootstrap approach | chezmoi-native (Option D) |
 | Password manager | 1Password |
-| SSH key storage | 1Password (shared key: `cautamaton-ssh-key`) |
+| SSH key storage | 1Password (shared key: `cautomaton-ssh-key`) |
 | Brewfile | Manual with validation |
 | Emacs on macOS | Homebrew Cask |
 | Distrobox image | Slim (bootstrap on first run) |
@@ -371,7 +371,7 @@ Is this worth the switch from current bash setup?
 ### Next Actions
 
 1. ~~Choose password manager~~ — Done (1Password)
-2. ~~Store SSH keys~~ — Done (`cautamaton-ssh-key` in Private vault)
+2. ~~Store SSH keys~~ — Done (`cautomaton-ssh-key` in Private vault)
 3. ~~Create SSH templates~~ — Done (`private_id_rsa.tmpl`, `id_rsa.pub.tmpl`)
 4. **Configure secretspec** — Set up 1Password as provider for runtime secrets
 5. **Test on clean WSL Fedora** — Validates the whole approach
