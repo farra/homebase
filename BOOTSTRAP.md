@@ -6,11 +6,11 @@ Canonical walkthrough for bootstrapping a new machine with homebase.
 
 1. **1Password account** with these items in your **Private** vault:
 
-   | Item                 | Field         | Purpose                                         |
-   |----------------------|---------------|-------------------------------------------------|
-   | `cautamaton-ssh-key` | `private key` | SSH private key                                 |
-   | `cautamaton-ssh-key` | `public key`  | SSH public key                                  |
-   | `github-pat`         | `credential`  | GitHub PAT with `repo` + `read:packages` scopes |
+   | Item                      | Field/Files                | Purpose                                         |
+   |---------------------------|----------------------------|-------------------------------------------------|
+   | `cautamaton-ssh-key`      | `private key`, `public key`| SSH key pair                                    |
+   | `github-pat`              | `credential`               | GitHub PAT with `repo` + `read:packages` scopes |
+   | `cautomaton-homebase-gpg` | `public.asc`, `secret.asc` | GPG key for encrypting `~/.authinfo.gpg`        |
 
 2. **Network access** to GitHub, Homebrew, and 1Password
 
@@ -30,7 +30,7 @@ Since the repo is private, you can't `curl` the bootstrap script. Options:
 bash bazzite.sh
 ```
 
-The script runs 6 idempotent phases, each guarded by a stamp file in `~/.homebase-bootstrap/`:
+The script runs 7 idempotent phases, each guarded by a stamp file in `~/.homebase-bootstrap/`:
 
 **Phase 1: Homebrew** — Installs to `~/.linuxbrew` (no root, no rpm-ostree)
 
@@ -38,18 +38,20 @@ The script runs 6 idempotent phases, each guarded by a stamp file in `~/.homebas
 
 **Phase 3: 1Password** — `op signin` (opens browser for authentication)
 
-**Phase 4: Dotfiles** — Retrieves GitHub PAT from 1Password, runs `chezmoi init --apply` with PAT-embedded HTTPS URL. This:
+**Phase 4: GPG keys** — Imports public and secret GPG keys from 1Password for authinfo encryption
+
+**Phase 5: Dotfiles** — Retrieves GitHub PAT from 1Password, runs `chezmoi init --apply` with PAT-embedded HTTPS URL. This:
   - Clones the private repo via HTTPS (no SSH needed yet)
   - Writes SSH keys to `~/.ssh/` from 1Password templates
   - Applies all dotfiles (zshrc, gitconfig, starship, Doom Emacs config)
-  - Writes `.authinfo` for Emacs/magit (GitHub PAT from 1Password)
+  - Creates encrypted `~/.authinfo.gpg` for Emacs/magit (GitHub PAT from 1Password, GPG-encrypted)
   - Clones `~/forge` via `.chezmoiexternal.toml`
-  - Installs `~/.homebase/justfile` and `~/dev/justfile`
+  - Installs `~/.homebase/justfile` (user commands + worktree lifecycle)
   - Installs AI tool configs (claude, codex, gemini settings)
 
-**Phase 5: Fonts** — Downloads FiraCode and FiraMono Nerd Fonts to `~/.local/share/fonts/NerdFonts/`
+**Phase 6: Fonts** — Downloads FiraCode and FiraMono Nerd Fonts to `~/.local/share/fonts/NerdFonts/`
 
-**Phase 6: Distrobox** — Logs into GHCR with the PAT, pulls the baked image, creates distrobox `home`
+**Phase 7: Distrobox** — Logs into GHCR with the PAT, pulls the baked image, creates distrobox `home`
 
 ### After Bootstrap
 
@@ -80,7 +82,7 @@ To re-run a specific phase, delete its stamp file:
 
 ```bash
 ls ~/.homebase-bootstrap/    # See completed phases
-rm ~/.homebase-bootstrap/04-dotfiles    # Re-run dotfiles phase
+rm ~/.homebase-bootstrap/05-dotfiles    # Re-run dotfiles phase
 bash bazzite.sh
 ```
 
@@ -104,13 +106,18 @@ brew install --cask 1password-cli
 # 3. Authenticate
 eval "$(op signin)"
 
-# 4. Dotfiles (SSH keys, forge clone, all configs — handled)
+# 4. Import GPG key for authinfo encryption
+op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-public.asc" | gpg --batch --import
+op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-secret.asc" | gpg --batch --import
+echo "48CF4CDEC93AE47B93491C7A43EBD702731ECFAC:6:" | gpg --batch --import-ownertrust
+
+# 5. Dotfiles (SSH keys, forge clone, encrypted authinfo, all configs)
 chezmoi init --apply farra/homebase
 
-# 5. Remaining Homebrew packages (including Nerd Fonts)
+# 6. Remaining Homebrew packages (including Nerd Fonts)
 brew bundle --file=~/.local/share/chezmoi/Brewfile
 
-# 6. Nix (for project-level shells)
+# 7. Nix (for project-level shells)
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh
 ```
 
@@ -135,10 +142,9 @@ A single `chezmoi apply` handles:
 | Shell config       | `dot_zshrc.tmpl` → zsh + starship + plugins + aliases                   |
 | Starship prompt    | `dot_config/starship.toml` → Nerd Font Symbols + nix shell detection    |
 | Doom Emacs config  | `dot_config/doom/`                                                      |
-| Emacs auth-source  | `private_dot_authinfo.tmpl` → GitHub PAT for magit/forge                |
+| Emacs auth-source  | `run_onchange_create-authinfo-gpg.sh.tmpl` → GPG-encrypted `~/.authinfo.gpg` |
 | Forge repo         | `.chezmoiexternal.toml` → `git clone` to `~/forge`                      |
-| Workspace justfile | `dev/justfile` → `~/dev/justfile` (worktree lifecycle commands)          |
-| Homebase justfile  | `dot_homebase/justfile` → `~/.homebase/justfile` (user commands)         |
+| Homebase justfile  | `dot_homebase/justfile` → `~/.homebase/justfile` (user commands + worktrees) |
 | GitHub CLI         | `dot_config/gh/config.yml` → aliases and settings                       |
 | AI tool configs    | `dot_claude/`, `dot_codex/`, `dot_gemini/` → settings (not credentials) |
 
@@ -156,6 +162,8 @@ Externals (forge clone) run after file templates, so SSH keys are already on dis
 - [ ] `ssh -T git@github.com` authenticates as `farra`
 - [ ] `ls -la ~/.ssh/id_rsa` shows permissions `600`
 - [ ] `git config user.name` returns your name
+- [ ] `gpg --list-secret-keys` shows the homebase key
+- [ ] `ls -la ~/.authinfo.gpg` exists (GPG-encrypted)
 - [ ] `chezmoi status` shows no pending changes
 - [ ] `~/forge/` exists and is a git repo
 - [ ] `ls ~/.local/share/fonts/NerdFonts/` shows FiraCode and FiraMono files
@@ -204,24 +212,22 @@ homebase distrobox-rebuild  # Pull fresh image + recreate container
 
 ## Post-Bootstrap: Working with Worktrees
 
-Use the workspace justfile at `~/dev/justfile` to manage projects via git worktrees. Bare clones live hidden in `~/dev/.worktrees/`; working copies are checked out into group dirs where Emacs and agents operate.
+Use `homebase` to manage projects via git worktrees. Bare clones live hidden in `~/dev/.worktrees/`; working copies are checked out into group dirs where Emacs and agents operate.
 
 ### First-time setup for a project
 
 ```bash
-cd ~/dev
-just clone farra/homebase          # bare clone → .worktrees/homebase.git
-just clone farra/agentboxes        # bare clone → .worktrees/agentboxes.git
-just clone jamandtea/some-project  # bare clone → .worktrees/some-project.git
+homebase clone farra/homebase          # bare clone → .worktrees/homebase.git
+homebase clone farra/agentboxes        # bare clone → .worktrees/agentboxes.git
+homebase clone jamandtea/some-project  # bare clone → .worktrees/some-project.git
 ```
 
 ### Starting work (one worktree per task/agent)
 
 ```bash
-cd ~/dev
-just wt homebase fix-auth          # → me/homebase-fix-auth (new branch)
-just wt homebase add-search        # → me/homebase-add-search (new branch)
-just wt some-project refactor jmt  # → jmt/some-project-refactor
+homebase wt homebase fix-auth          # → me/homebase-fix-auth (new branch)
+homebase wt homebase add-search        # → me/homebase-add-search (new branch)
+homebase wt some-project refactor jmt  # → jmt/some-project-refactor
 ```
 
 Each worktree gets its own branch. Open a persp-mode workspace in Emacs for each, spawn an agent-shell session, and the agent works in isolation.
@@ -229,16 +235,14 @@ Each worktree gets its own branch. Open a persp-mode workspace in Emacs for each
 ### Checking status
 
 ```bash
-cd ~/dev
-just wts        # list all active worktrees across all bare clones
-just clones     # list all bare clones
+homebase wts        # list all active worktrees across all bare clones
+homebase clones     # list all bare clones
 ```
 
 ### Finishing work
 
 ```bash
-cd ~/dev
-just wt-rm me/homebase-fix-auth   # removes worktree, keeps branch
+homebase wt-rm me/homebase-fix-auth   # removes worktree, keeps branch
 ```
 
 The branch and any pushed commits survive. The directory is disposable.

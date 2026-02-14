@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# Import GPG keys for authinfo encryption from 1Password
+# Runs once before other chezmoi targets (run_once_before_)
+
+set -euo pipefail
+
+GPG_KEY_FPR="48CF4CDEC93AE47B93491C7A43EBD702731ECFAC"
+
+# Skip if key is already in the keyring
+if gpg --list-secret-keys "$GPG_KEY_FPR" &>/dev/null; then
+    echo "GPG key $GPG_KEY_FPR already imported, skipping"
+    exit 0
+fi
+
+echo "Importing GPG keys from 1Password..."
+
+# Import public key
+op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-public.asc" | \
+    gpg --batch --import
+
+# Import secret key
+op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-secret.asc" | \
+    gpg --batch --import
+
+# Set ultimate trust (it's our own key)
+echo "${GPG_KEY_FPR}:6:" | gpg --batch --import-ownertrust
+
+echo "GPG key imported and trusted: $GPG_KEY_FPR"

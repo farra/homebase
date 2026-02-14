@@ -28,11 +28,11 @@ Layer 2: Per-project nix flakes (cautomaton-develops, out of scope)
 
 You need these items in your 1Password **Private** vault:
 
-| Item | Field | Purpose |
-|------|-------|---------|
-| `cautamaton-ssh-key` | `private key` | SSH private key |
-| `cautamaton-ssh-key` | `public key` | SSH public key |
+| Item | Field/Files | Purpose |
+|------|-------------|---------|
+| `cautamaton-ssh-key` | `private key`, `public key` | SSH key pair |
 | `github-pat` | `credential` | GitHub PAT with `repo` + `read:packages` scopes |
+| `cautomaton-homebase-gpg` | `public.asc`, `secret.asc` | GPG key for encrypting `~/.authinfo.gpg` |
 
 ## Quick Start
 
@@ -52,6 +52,9 @@ See [BOOTSTRAP.md](./BOOTSTRAP.md) for the full walkthrough, verification steps,
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew install chezmoi 1password-cli
 eval "$(op signin)"
+op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-public.asc" | gpg --batch --import
+op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-secret.asc" | gpg --batch --import
+echo "48CF4CDEC93AE47B93491C7A43EBD702731ECFAC:6:" | gpg --batch --import-ownertrust
 chezmoi init --apply farra/homebase
 brew bundle --file=~/.local/share/chezmoi/Brewfile
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh
@@ -68,10 +71,9 @@ After bootstrap and `homebase setup`, the workspace looks like:
 │   ├── .worktrees/         # Bare clones (hidden, not worked in directly)
 │   ├── me/                 # github.com/farra — worktrees here
 │   ├── jmt/                # github.com/jamandtea
-│   ├── ref/                # Third-party / reference
-│   └── justfile            # Workspace commands (worktree lifecycle)
+│   └── ref/                # Third-party / reference
 ├── .homebase/
-│   └── justfile            # User commands (setup, updates, distrobox)
+│   └── justfile            # User commands (setup, updates, worktrees, distrobox)
 └── .ssh/                   # SSH keys from 1Password templates
 ```
 
@@ -80,12 +82,11 @@ After bootstrap and `homebase setup`, the workspace looks like:
 Bare clones live in `~/dev/.worktrees/`. Working copies are worktrees checked out into group dirs. Each worktree = one branch = one agent. The branch is the artifact; the directory is disposable.
 
 ```bash
-cd ~/dev
-just clone farra/projectA              # bare clone → .worktrees/projectA.git
-just wt projectA fix-auth              # worktree → me/projectA-fix-auth
-just wt projectA add-search jmt        # worktree → jmt/projectA-add-search
-just wts                               # list all active worktrees
-just wt-rm me/projectA-fix-auth        # clean up (keeps branch)
+homebase clone farra/projectA              # bare clone → .worktrees/projectA.git
+homebase wt projectA fix-auth              # worktree → me/projectA-fix-auth
+homebase wt projectA add-search jmt        # worktree → jmt/projectA-add-search
+homebase wts                               # list all active worktrees
+homebase wt-rm me/projectA-fix-auth        # clean up (keeps branch)
 ```
 
 Forge does *not* follow this pattern — it's a regular clone at `~/forge`.
@@ -120,7 +121,7 @@ homebase                    # List all commands
 ├── flake.nix                     # Nix flake (all container tools)
 ├── flake.lock
 ├── images/Containerfile          # Baked distrobox image (fedora-toolbox base)
-├── bootstrap/bazzite.sh          # Layer 0 bootstrap (6 phases, idempotent)
+├── bootstrap/bazzite.sh          # Layer 0 bootstrap (7 phases, idempotent)
 ├── homebase.toml                 # Tool definitions (source of truth)
 ├── Brewfile                      # Host-only tools (Homebrew)
 ├── justfile                      # Project development commands
@@ -128,17 +129,18 @@ homebase                    # List all commands
 ├── .chezmoi.toml.tmpl            # chezmoi config
 ├── .chezmoiexternal.toml         # External repos (forge)
 ├── .chezmoiignore                # Files excluded from chezmoi apply
-├── dot_homebase/justfile          # → ~/.homebase/justfile (user commands)
-├── dev/justfile                   # → ~/dev/justfile (worktree lifecycle)
+├── dot_homebase/justfile          # → ~/.homebase/justfile (user commands + worktrees)
 ├── dot_config/
 │   ├── doom/                     # Doom Emacs config
 │   ├── starship.toml             # Starship prompt (Nerd Font Symbols + nix detect)
+│   ├── git/ignore                # Global gitignore
 │   ├── gh/config.yml             # GitHub CLI config
 │   ├── zed/settings.json         # Zed editor config
 │   └── glow/glow.yml             # Markdown viewer config
 ├── dot_zshrc.tmpl                # Shell config (zsh + plugins + aliases)
 ├── dot_gitconfig.tmpl            # Git config (templated)
-├── private_dot_authinfo.tmpl     # Emacs auth-source (GitHub PAT from 1Password)
+├── run_once_before_import-gpg-keys.sh.tmpl  # Import GPG keys from 1Password
+├── run_onchange_create-authinfo-gpg.sh.tmpl # Encrypted ~/.authinfo.gpg from PAT
 ├── private_dot_ssh/              # SSH keys + config (from 1Password)
 ├── dot_claude/                   # Claude Code settings
 ├── dot_codex/                    # Codex CLI settings

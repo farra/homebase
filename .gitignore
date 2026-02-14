@@ -13,3 +13,14 @@ result-*
 
 # Local overrides (not tracked)
 .local/
+
+# Secrets / key material
+*.asc
+*.gpg
+*.pem
+*.key
+*.p12
+*.pfx
+.env
+.env.local
+.env.*.local

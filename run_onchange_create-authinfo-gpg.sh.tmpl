@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# Create encrypted ~/.authinfo.gpg from 1Password secrets
+# Runs when PAT changes (chezmoi run_onchange_ hashes rendered content)
+#
+# Change-detection hash (do not edit):
+# {{ onepasswordRead "op://Private/github-pat/credential" | sha256sum }}
+
+set -euo pipefail
+
+GPG_KEY_FPR="48CF4CDEC93AE47B93491C7A43EBD702731ECFAC"
+TARGET="$HOME/.authinfo.gpg"
+
+# Verify GPG key is available
+if ! gpg --list-keys "$GPG_KEY_FPR" &>/dev/null; then
+    echo "ERROR: GPG key $GPG_KEY_FPR not found in keyring"
+    echo "Run: chezmoi state delete-bucket --bucket=scriptState"
+    echo "Then: chezmoi apply"
+    exit 1
+fi
+
+# Fetch PAT at runtime (not baked into script)
+PAT="$(op read "op://Private/github-pat/credential")"
+
+# Encrypt directly to file — plaintext never touches disk
+printf 'machine api.github.com login %s^forge password %s\n' \
+    "{{ .github_user }}" "$PAT" | \
+    gpg --batch --yes --trust-model always \
+        --encrypt --recipient "$GPG_KEY_FPR" \
+        --output "$TARGET"
+
+chmod 600 "$TARGET"
+echo "Created encrypted $TARGET"

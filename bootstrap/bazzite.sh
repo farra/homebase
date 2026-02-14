@@ -8,6 +8,7 @@
 #   - 1Password account with these items in the Private vault:
 #     - cautamaton-ssh-key (fields: "private key", "public key")
 #     - github-pat (field: "credential") — PAT with repo + read:packages scopes
+#     - cautomaton-homebase-gpg (files: public.asc, secret.asc) — GPG key for authinfo
 #
 # Usage:
 #   bash bazzite.sh
@@ -102,11 +103,33 @@ else
     exit 1
 fi
 
-# ── Phase 4: Dotfiles (chezmoi + 1Password) ─────────────────────────────────
+# ── Phase 4: GPG keys ──────────────────────────────────────────────────────
 
-info "Phase 4: Dotfiles via chezmoi"
+info "Phase 4: GPG keys for authinfo encryption"
 
-if stamp_check "04-dotfiles"; then
+GPG_KEY_FPR="48CF4CDEC93AE47B93491C7A43EBD702731ECFAC"
+
+if stamp_check "04-gpg-keys"; then
+    skip "GPG keys already imported"
+else
+    if gpg --list-secret-keys "$GPG_KEY_FPR" &>/dev/null; then
+        ok "GPG key already in keyring (re-stamping)"
+    else
+        op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-public.asc" | \
+            gpg --batch --import
+        op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-secret.asc" | \
+            gpg --batch --import
+        echo "${GPG_KEY_FPR}:6:" | gpg --batch --import-ownertrust
+        ok "GPG keys imported and trusted"
+    fi
+    stamp_done "04-gpg-keys"
+fi
+
+# ── Phase 5: Dotfiles (chezmoi + 1Password) ─────────────────────────────────
+
+info "Phase 5: Dotfiles via chezmoi"
+
+if stamp_check "05-dotfiles"; then
     skip "Dotfiles already applied"
 else
     # Retrieve GitHub PAT from 1Password
@@ -130,15 +153,15 @@ else
         warn "~/.ssh/id_rsa not found after chezmoi apply"
     fi
 
-    stamp_done "04-dotfiles"
+    stamp_done "05-dotfiles"
     ok "Dotfiles applied"
 fi
 
-# ── Phase 5: Fonts ────────────────────────────────────────────────────────
+# ── Phase 6: Fonts ────────────────────────────────────────────────────────
 
-info "Phase 5: Nerd Fonts"
+info "Phase 6: Nerd Fonts"
 
-if stamp_check "05-fonts"; then
+if stamp_check "06-fonts"; then
     skip "Nerd Fonts already installed"
 else
     FONT_DIR="$HOME/.local/share/fonts/NerdFonts"
@@ -151,13 +174,13 @@ else
         rm -f "/tmp/${font}.zip"
     done
     fc-cache -f
-    stamp_done "05-fonts"
+    stamp_done "06-fonts"
     ok "Nerd Fonts installed to $FONT_DIR (FiraCode, FiraMono)"
 fi
 
-# ── Phase 6: Distrobox ──────────────────────────────────────────────────────
+# ── Phase 7: Distrobox ──────────────────────────────────────────────────────
 
-info "Phase 6: Distrobox container"
+info "Phase 7: Distrobox container"
 
 # Verify required tools are available (podman and distrobox ship with Bazzite)
 for cmd in podman distrobox; do
@@ -168,13 +191,13 @@ for cmd in podman distrobox; do
     fi
 done
 
-if stamp_check "06-distrobox"; then
+if stamp_check "07-distrobox"; then
     skip "Distrobox 'home' already created"
 else
     # Check if container already exists (stamp may have been deleted)
     if podman container exists home 2>/dev/null; then
         ok "Distrobox 'home' already exists (re-stamping)"
-        stamp_done "06-distrobox"
+        stamp_done "07-distrobox"
     else
         # Retrieve PAT again (may have been cleared from env)
         GITHUB_PAT="$(op item get "github-pat" --fields label="credential")"
@@ -188,7 +211,7 @@ else
         # Create distrobox (--home shares host $HOME)
         distrobox create --image ghcr.io/farra/homebase:latest --name home
 
-        stamp_done "06-distrobox"
+        stamp_done "07-distrobox"
         ok "Distrobox 'home' created"
     fi
 fi

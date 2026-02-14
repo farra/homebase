@@ -123,7 +123,7 @@
 (map! "C-c y a" #'+copy-buffer-file-path-absolute
       "C-c y r" #'+copy-buffer-file-path-relative)
 
-(setq auth-sources '("~/.authinfo"))
+(setq auth-sources '("~/.authinfo.gpg"))
 
 
 ;; Temp load local copies of agent-shell/acp for testing
