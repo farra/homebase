@@ -12,21 +12,43 @@ tools = ["git", "chezmoi", "zsh", "just", "direnv"]
 [container]
 # All dev tools baked into the distrobox image (Nix flake)
 tools = [
+  # Core
   "git",
   "zsh",
   "chezmoi",
   "just",
   "direnv",
+  # Search and navigation
   "ripgrep",
   "fd",
   "fzf",
+  "zoxide",
+  "tree",
+  # Modern CLI tools
   "bat",
   "eza",
   "jq",
   "yq",
   "delta",
+  "glow",
+  "tealdeer",
+  # Git
   "gh",
+  "lazygit",
+  # Shell
   "oh-my-posh",
+  "atuin",
+  "shellcheck",
+  "tmux",
+  # System essentials
+  "curl",
+  "wget",
+  "watch",
+  "less",
+  "file",
+  "lsof",
+  "bottom",
+  # Editor
   "emacs",  # with vterm via emacsWithPackages
 ]
 # AI agents installed separately via ~/.homebase/justfile (not baked):

@@ -11,7 +11,9 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        # All tools that should be available in the homebase environment
+        # All tools that should be available in the homebase environment.
+        # Language runtimes (python, node, rust, go) are per-project via
+        # cautomaton-develops nix develop shells, not here.
         homebasePackages = with pkgs; [
           # Core
           git
@@ -24,6 +26,8 @@
           ripgrep
           fd
           fzf
+          zoxide
+          tree
 
           # Modern CLI tools
           bat
@@ -31,8 +35,27 @@
           jq
           yq-go
           delta
+          glow
+          tealdeer
+
+          # Git
           gh
+          lazygit
+
+          # Shell
           oh-my-posh
+          atuin
+          shellcheck
+          tmux
+
+          # System essentials
+          curl
+          wget
+          watch
+          less
+          file
+          lsof
+          bottom
 
           # Editor — Emacs with vterm native module for Doom Emacs
           (emacs.pkgs.withPackages (epkgs: with epkgs; [
