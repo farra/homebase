@@ -240,7 +240,7 @@ install-codex:
         exit 0
     fi
     echo "Installing Codex CLI..."
-    curl -fsSL https://raw.githubusercontent.com/openai/codex/main/install.sh | bash
+    npm install -g @openai/codex
     echo "Codex CLI installed"
 
 # Install Gemini CLI
@@ -265,7 +265,7 @@ update-claude:
 
 # Update Codex CLI
 update-codex:
-    curl -fsSL https://raw.githubusercontent.com/openai/codex/main/install.sh | bash
+    npm install -g @openai/codex
 
 # Update Gemini CLI
 update-gemini:
