@@ -163,7 +163,9 @@ distrobox-create:
     if [[ -d "/home/linuxbrew" ]]; then
         VOLUME_FLAGS="--volume /home/linuxbrew:/home/linuxbrew"
     fi
-    distrobox create --image {{registry}}/{{image_name}}:latest --name home $VOLUME_FLAGS
+    distrobox create --image {{registry}}/{{image_name}}:latest --name home \
+        --init-hooks "usermod -s /usr/bin/zsh \$USER" \
+        $VOLUME_FLAGS
 
 # Enter the homebase distrobox
 distrobox-enter:

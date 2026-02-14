@@ -247,7 +247,9 @@ else
         if [[ -d "/home/linuxbrew" ]]; then
             VOLUME_FLAGS="--volume /home/linuxbrew:/home/linuxbrew"
         fi
-        distrobox create --image ghcr.io/farra/homebase:latest --name home $VOLUME_FLAGS
+        distrobox create --image ghcr.io/farra/homebase:latest --name home \
+            --init-hooks "usermod -s /usr/bin/zsh $USER" \
+            $VOLUME_FLAGS
 
         stamp_done "07-distrobox"
         ok "Distrobox 'home' created"

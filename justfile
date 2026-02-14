@@ -49,7 +49,9 @@ test-local: build-image
     if [[ -d "/home/linuxbrew" ]]; then
         VOLUME_FLAGS="--volume /home/linuxbrew:/home/linuxbrew"
     fi
-    distrobox create --image {{registry}}/{{image_name}}:latest --name homebase-test $VOLUME_FLAGS
+    distrobox create --image {{registry}}/{{image_name}}:latest --name homebase-test \
+        --init-hooks "usermod -s /usr/bin/zsh \$USER" \
+        $VOLUME_FLAGS
     echo "Created distrobox 'homebase-test'. Enter with: distrobox enter homebase-test"
 
 # ── Dotfile Development ──────────────────────────────────────────────────
