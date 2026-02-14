@@ -54,9 +54,15 @@ tools = [
 # AI agents installed separately via ~/.homebase/justfile (not baked):
 # claude-code, codex, gemini-cli
 
+[fonts]
+# Host-level fonts (not in container — terminal and display server are on the host)
+# Bazzite: downloaded to ~/.local/share/fonts/ during bootstrap
+# macOS: installed via Homebrew cask
+nerd-fonts = ["FiraCode", "FiraMono"]
+
 [macos]
 # Homebrew casks (GUI apps, macOS only)
-casks = ["emacs", "1password-cli"]
+casks = ["emacs", "1password-cli", "font-fira-code-nerd-font", "font-fira-mono-nerd-font"]
 
 [workspace]
 # Workspace layout — managed by chezmoi (externals + run_once script)

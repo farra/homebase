@@ -106,11 +106,32 @@ else
     ok "Dotfiles applied"
 fi
 
-# ── Phase 5: Distrobox ──────────────────────────────────────────────────────
+# ── Phase 5: Fonts ────────────────────────────────────────────────────────
 
-info "Phase 5: Distrobox container"
+info "Phase 5: Nerd Fonts"
 
-if stamp_check "05-distrobox"; then
+if stamp_check "05-fonts"; then
+    skip "Nerd Fonts already installed"
+else
+    FONT_DIR="$HOME/.local/share/fonts/NerdFonts"
+    mkdir -p "$FONT_DIR"
+    NERD_FONTS_BASE="https://github.com/ryanoasis/nerd-fonts/releases/latest/download"
+    for font in FiraCode FiraMono; do
+        echo "  Downloading ${font} Nerd Font..."
+        curl -fLo "/tmp/${font}.zip" "${NERD_FONTS_BASE}/${font}.zip"
+        unzip -o "/tmp/${font}.zip" -d "$FONT_DIR/"
+        rm -f "/tmp/${font}.zip"
+    done
+    fc-cache -f
+    stamp_done "05-fonts"
+    ok "Nerd Fonts installed to $FONT_DIR (FiraCode, FiraMono)"
+fi
+
+# ── Phase 6: Distrobox ──────────────────────────────────────────────────────
+
+info "Phase 6: Distrobox container"
+
+if stamp_check "06-distrobox"; then
     skip "Distrobox 'home' already created"
 else
     # Retrieve PAT again (may have been cleared from env)
@@ -125,7 +146,7 @@ else
     # Create distrobox (--home shares host $HOME)
     distrobox create --image ghcr.io/farra/homebase:latest --name home
 
-    stamp_done "05-distrobox"
+    stamp_done "06-distrobox"
     ok "Distrobox 'home' created"
 fi
 
