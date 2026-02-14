@@ -114,11 +114,13 @@ else
 
     # chezmoi init with HTTPS URL (private repo, no SSH needed yet)
     # Use GIT_ASKPASS to avoid PAT appearing in process args
-    export GIT_ASKPASS="$STAMP_DIR/.git-askpass"
-    printf '#!/bin/sh\necho "%s"\n' "$GITHUB_PAT" > "$GIT_ASKPASS"
+    export GIT_ASKPASS="$(mktemp)"
     chmod 700 "$GIT_ASKPASS"
+    trap 'rm -f "$GIT_ASKPASS"' EXIT
+    printf '#!/bin/sh\necho "%s"\n' "$GITHUB_PAT" > "$GIT_ASKPASS"
     chezmoi init --apply "https://farra@github.com/farra/homebase.git"
     rm -f "$GIT_ASKPASS"
+    trap - EXIT
     unset GIT_ASKPASS
 
     # Verify SSH key landed
