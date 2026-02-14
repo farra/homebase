@@ -1,27 +1,31 @@
-# justfile - Post-bootstrap setup for inside a container
+# justfile - Homebase user commands
 #
-# Run these after entering a distrobox for the first time.
-# Lives at ~/.homebase/justfile, shared across all containers via $HOME.
+# For living IN homebase (setup, updates, day-to-day use).
+# Lives at ~/.homebase/justfile, shared across host and all containers via $HOME.
 #
 # Usage:
 #   cd ~/.homebase && just setup         # full first-time setup
-#   cd ~/.homebase && just doom-sync     # after config changes
-#   cd ~/.homebase && just update-agents # update AI tools
+#   cd ~/.homebase && just update        # update everything
+#   homebase                             # shell alias for cd ~/.homebase && just
+
+registry := "ghcr.io/farra"
+image_name := "homebase"
+runtime := `command -v podman 2>/dev/null || command -v docker 2>/dev/null || echo "no-runtime"`
 
 default:
     @just --list
 
-# ── First-Time Setup ─────────────────────────────────────────────────────────
+# ── First-Time Setup ─────────────────────────────────────────────────────
 
-# Full first-time setup (run once after entering a new container)
+# Full first-time setup
 setup: setup-workspace doom-install install-agents
     @echo ""
     @echo "Setup complete!"
     @echo "  - Workspace directories created"
-    @echo "  - Doom Emacs installed (run 'doom sync' after config changes)"
+    @echo "  - Doom Emacs installed (run 'just doom-sync' after config changes)"
     @echo "  - AI agents installed (claude, codex, gemini)"
 
-# ── Workspace ──────────────────────────────────────────────────────────────
+# ── Workspace ────────────────────────────────────────────────────────────
 
 # Create workspace directory structure
 setup-workspace:
@@ -32,7 +36,42 @@ setup-workspace:
     @echo "  ~/dev/jmt/         — github.com/jamandtea"
     @echo "  ~/dev/ref/         — third-party / reference"
 
-# ── Doom Emacs ───────────────────────────────────────────────────────────────
+# ── Updates ──────────────────────────────────────────────────────────────
+
+# Update everything (dotfiles + host tools + agents)
+update: update-dotfiles update-host update-agents
+    @echo ""
+    @echo "All updates complete."
+
+# Pull and apply latest dotfiles
+update-dotfiles:
+    chezmoi update
+
+# Update host tools (Homebrew)
+update-host:
+    brew update && brew upgrade
+
+# ── Distrobox Lifecycle ──────────────────────────────────────────────────
+
+# Create the homebase distrobox
+distrobox-create:
+    {{runtime}} pull {{registry}}/{{image_name}}:latest
+    distrobox create --image {{registry}}/{{image_name}}:latest --name home
+
+# Enter the homebase distrobox
+distrobox-enter:
+    distrobox enter home
+
+# Remove the homebase distrobox
+distrobox-rm:
+    distrobox rm home --force
+
+# Rebuild distrobox from latest image (pulls fresh, recreates)
+distrobox-rebuild: distrobox-rm distrobox-create
+    @echo "Distrobox 'home' rebuilt from latest image."
+    @echo "Run 'just distrobox-enter' to enter."
+
+# ── Doom Emacs ───────────────────────────────────────────────────────────
 
 # Install Doom Emacs (clone + install)
 doom-install:
@@ -71,7 +110,7 @@ doom-doctor:
 doom-export:
     distrobox-export --app emacs 2>/dev/null || echo "Not in a distrobox?"
 
-# ── AI Agents ────────────────────────────────────────────────────────────────
+# ── AI Agents ────────────────────────────────────────────────────────────
 
 # Install all AI agent CLIs
 install-agents: install-claude install-codex install-gemini
