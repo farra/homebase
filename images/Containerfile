@@ -10,7 +10,7 @@
 #   distrobox create --image ghcr.io/farra/homebase:latest --name home
 #   distrobox enter home
 
-FROM registry.fedoraproject.org/fedora-toolbox:41
+FROM registry.fedoraproject.org/fedora-toolbox:43
 
 LABEL com.github.containers.toolbox="true"
 LABEL org.opencontainers.image.source="https://github.com/farra/homebase"
