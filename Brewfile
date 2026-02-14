@@ -16,6 +16,7 @@ cask "1password-cli" if OS.mac?
 brew "1password-cli" unless OS.mac?
 
 # macOS only - GUI apps
+cask "tailscale" if OS.mac?
 cask "emacs" if OS.mac?
 cask "font-fira-code-nerd-font" if OS.mac?
 cask "font-fira-mono-nerd-font" if OS.mac?

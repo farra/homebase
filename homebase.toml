@@ -8,6 +8,8 @@
 # Minimal tools for the host OS (Homebrew)
 tools = ["git", "chezmoi", "zsh", "just", "direnv"]
 # 1password-cli installed separately (cask on macOS, brew on Linux)
+# tailscale: host-level VPN mesh (pre-installed on Bazzite, cask on macOS)
+# Configured manually after bootstrap (tailscale up)
 
 [container]
 # All dev tools baked into the distrobox image (Nix flake)
@@ -65,7 +67,7 @@ nerd-fonts = ["FiraCode", "FiraMono"]
 
 [macos]
 # Homebrew casks (GUI apps, macOS only)
-casks = ["emacs", "1password-cli", "font-fira-code-nerd-font", "font-fira-mono-nerd-font"]
+casks = ["emacs", "1password-cli", "tailscale", "font-fira-code-nerd-font", "font-fira-mono-nerd-font"]
 
 [workspace]
 # Workspace layout — managed by chezmoi (externals + run_once script)

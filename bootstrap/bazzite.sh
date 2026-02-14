@@ -256,6 +256,28 @@ else
     fi
 fi
 
+# ── Phase 8: Tailscale ────────────────────────────────────────────────────────
+
+info "Phase 8: Tailscale"
+
+if stamp_check "08-tailscale"; then
+    skip "Tailscale already enabled"
+else
+    if command -v tailscale &>/dev/null; then
+        # Tailscale is pre-installed on Bazzite/Universal Blue — just enable the daemon
+        sudo systemctl enable --now tailscaled
+        ok "tailscaled service enabled"
+        echo ""
+        echo "  Tailscale is ready. Connect manually:"
+        echo "    sudo tailscale up"
+        echo ""
+        stamp_done "08-tailscale"
+    else
+        warn "Tailscale not found. On Bazzite it should be pre-installed."
+        warn "Install manually: https://tailscale.com/download/linux"
+    fi
+fi
+
 # ── Done ─────────────────────────────────────────────────────────────────────
 
 echo ""
@@ -265,6 +287,7 @@ echo "  Next steps:"
 echo "    1. distrobox enter home"
 echo "    2. homebase setup        (workspace dirs + Doom Emacs + AI agents)"
 echo "    3. homebase doom-export  (add Emacs to KDE desktop)"
+echo "    4. sudo tailscale up     (connect to your tailnet)"
 echo ""
 echo "  To re-run any phase, delete its stamp file:"
 echo "    ls $STAMP_DIR/"
