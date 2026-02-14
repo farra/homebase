@@ -75,6 +75,7 @@ Layer 2: Per-project nix flakes (cautomaton-develops, out of scope)
 | `justfile` | Project development commands (image build, flake check) |
 | `dot_homebase/justfile` | User commands (setup, updates, worktrees, distrobox lifecycle) |
 | `dot_zshrc.tmpl` | Shell config (zsh + starship + plugins + aliases) |
+| `dot_zprofile` | Login shell checks (distrobox entry: chezmoi sync status, etc.) |
 | `dot_config/starship.toml` | Starship prompt (Nerd Font Symbols + nix detect) |
 | `dot_config/doom/` | Doom Emacs configuration |
 | `dot_gitconfig.tmpl` | Git config (templated) |
@@ -162,6 +163,14 @@ Zsh with:
 - Smart aliases: `eza`→`ls`, `bat`→`cat`/`less`, `delta`→`diff`, `btm`→`top`, `lazygit`→`lg`, `tldr`→`help`, `glow`→`md`
 - Git aliases: `gs`, `gd`, `gds`, `gl`, `gla`, `ga`, `gc`, `gco`, `gb`, `gw`, `gwl`
 - FiraCode + FiraMono Nerd Fonts (host-level)
+
+### Distrobox entry checks (`dot_zprofile`)
+
+`~/.zprofile` runs once per login shell — including `distrobox enter`. It detects the container environment (`/run/.containerenv`) and runs lightweight checks:
+
+- **chezmoi sync status** — warns if dotfiles are out of sync between source and `$HOME`
+
+Add new checks inside the `if [[ -f /run/.containerenv ]]` block. Keep them fast and non-blocking.
 
 ## Workspace Model
 

@@ -158,7 +158,12 @@ distrobox-create:
         exit 1
     fi
     {{runtime}} pull {{registry}}/{{image_name}}:latest
-    distrobox create --image {{registry}}/{{image_name}}:latest --name home
+    # Mount host Homebrew if installed to /home/linuxbrew (not in $HOME)
+    VOLUME_FLAGS=""
+    if [[ -d "/home/linuxbrew" ]]; then
+        VOLUME_FLAGS="--volume /home/linuxbrew:/home/linuxbrew"
+    fi
+    distrobox create --image {{registry}}/{{image_name}}:latest --name home $VOLUME_FLAGS
 
 # Enter the homebase distrobox
 distrobox-enter:

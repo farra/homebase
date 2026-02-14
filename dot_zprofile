@@ -1,0 +1,27 @@
+# ~/.zprofile - Login shell checks (runs once per session, not every subshell)
+
+# =============================================================================
+# Distrobox entry checks
+# =============================================================================
+# These run when entering a distrobox (login shell) to surface useful warnings.
+# Add new checks here as needed — keep them fast and non-blocking.
+
+if [[ -f /run/.containerenv ]]; then
+
+    # chezmoi sync status
+    if command -v chezmoi &>/dev/null; then
+        _status=$(chezmoi status 2>/dev/null)
+        if [[ -n "$_status" ]]; then
+            echo "chezmoi: files out of sync"
+            echo "$_status" | head -5
+            _total=$(echo "$_status" | wc -l | tr -d ' ')
+            if (( _total > 5 )); then
+                echo "  ... and $((_total - 5)) more"
+            fi
+            echo "(run 'chezmoi diff' for details, 'chezmoi apply' to sync)"
+            echo ""
+        fi
+        unset _status _total
+    fi
+
+fi

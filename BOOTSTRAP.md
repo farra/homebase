@@ -43,6 +43,7 @@ The script runs 7 idempotent phases, each guarded by a stamp file in `~/.homebas
 **Phase 5: Dotfiles** — Retrieves GitHub PAT from 1Password, runs `chezmoi init --apply` with PAT-embedded HTTPS URL. This:
   - Clones the private repo via HTTPS (no SSH needed yet)
   - Writes SSH keys to `~/.ssh/` from 1Password templates
+  - Switches chezmoi remote to SSH (so future `chezmoi update` uses SSH key, no PAT needed)
   - Applies all dotfiles (zshrc, gitconfig, starship, Doom Emacs config)
   - Creates encrypted `~/.authinfo.gpg` for Emacs/magit (GitHub PAT from 1Password, GPG-encrypted)
   - Clones `~/forge` via `.chezmoiexternal.toml`
@@ -51,7 +52,7 @@ The script runs 7 idempotent phases, each guarded by a stamp file in `~/.homebas
 
 **Phase 6: Fonts** — Downloads FiraCode and FiraMono Nerd Fonts to `~/.local/share/fonts/NerdFonts/`
 
-**Phase 7: Distrobox** — Logs into GHCR with the PAT, pulls the baked image, creates distrobox `home`
+**Phase 7: Distrobox** — Logs into GHCR with the PAT, pulls the baked image, creates distrobox `home`. Mounts host Homebrew (`/home/linuxbrew`) into the container so `brew` works inside distrobox.
 
 ### After Bootstrap
 
@@ -140,6 +141,7 @@ A single `chezmoi apply` handles:
 | SSH keys           | `private_dot_ssh/` templates → 1Password `onepasswordRead`              |
 | Git config         | `dot_gitconfig.tmpl` → templated with name/email                        |
 | Shell config       | `dot_zshrc.tmpl` → zsh + starship + plugins + aliases                   |
+| Login checks       | `dot_zprofile` → distrobox entry checks (chezmoi sync status)           |
 | Starship prompt    | `dot_config/starship.toml` → Nerd Font Symbols + nix shell detection    |
 | Doom Emacs config  | `dot_config/doom/`                                                      |
 | Emacs auth-source  | `run_onchange_create-authinfo-gpg.sh.tmpl` → GPG-encrypted `~/.authinfo.gpg` |
@@ -172,6 +174,7 @@ Externals (forge clone) run after file templates, so SSH keys are already on dis
 ### Distrobox (Layer 1, Linux only)
 
 - [ ] `distrobox enter home` works
+- [ ] `which brew` — host Homebrew available via volume mount
 - [ ] `which emacs rg fd fzf bat just direnv chezmoi starship` — all found
 - [ ] `which nu` — nushell available
 - [ ] `emacs --version` runs
@@ -305,22 +308,19 @@ cat ~/.config/starship.toml   # Check config exists
 
 ## Architecture Notes
 
-### Why chezmoi clones via HTTPS
+### Why chezmoi clones via HTTPS (then switches to SSH)
 
-`chezmoi init farra/homebase` uses HTTPS, not SSH. This is intentional — SSH keys don't exist until *after* `chezmoi apply` writes them. The bootstrap script uses a PAT-embedded URL for the private repo. After bootstrap, the remote can be switched to SSH:
-
-```bash
-cd ~/.local/share/chezmoi
-git remote set-url origin git@github.com:farra/homebase.git
-```
+`chezmoi init farra/homebase` uses HTTPS, not SSH. This is intentional — SSH keys don't exist until *after* `chezmoi apply` writes them. The bootstrap script uses a PAT-embedded URL for the private repo, then automatically switches the remote to SSH once keys are installed. All subsequent `chezmoi update` calls use SSH — no PAT needed.
 
 ### Why the image is baked
 
 All tools are pre-installed via Nix in the container image. `distrobox enter home` gives you a fully equipped environment immediately — no bootstrap step inside the container. Only Doom Emacs and AI agents install into `$HOME` (via `homebase setup`) since they persist across container rebuilds.
 
-### distrobox shares $HOME
+### distrobox shares $HOME (and Homebrew)
 
 The `home` distrobox bind-mounts your real `$HOME`. Dotfiles applied by chezmoi on the host are visible inside the container. SSH keys, git config, fonts, and all configs work in both contexts.
+
+On Linux, Homebrew installs to `/home/linuxbrew/.linuxbrew` (outside `$HOME`). The distrobox is created with `--volume /home/linuxbrew:/home/linuxbrew` so `brew` is available inside the container too. The zshrc automatically detects this path and adds it to `$PATH`.
 
 ### 1Password vault name
 

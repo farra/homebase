@@ -175,6 +175,10 @@ else
     trap - EXIT
     unset GIT_ASKPASS
 
+    # Switch chezmoi remote to SSH (now that SSH keys are installed)
+    chezmoi git -- remote set-url origin git@github.com:farra/homebase.git
+    ok "Chezmoi remote switched to SSH (future updates use SSH key)"
+
     # Verify SSH key landed
     if [[ -f "$HOME/.ssh/id_rsa" ]]; then
         ok "SSH private key installed"
@@ -238,7 +242,12 @@ else
         podman pull ghcr.io/farra/homebase:latest
 
         # Create distrobox (--home shares host $HOME)
-        distrobox create --image ghcr.io/farra/homebase:latest --name home
+        # Mount host Homebrew if installed to /home/linuxbrew (not in $HOME)
+        VOLUME_FLAGS=""
+        if [[ -d "/home/linuxbrew" ]]; then
+            VOLUME_FLAGS="--volume /home/linuxbrew:/home/linuxbrew"
+        fi
+        distrobox create --image ghcr.io/farra/homebase:latest --name home $VOLUME_FLAGS
 
         stamp_done "07-distrobox"
         ok "Distrobox 'home' created"

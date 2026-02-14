@@ -35,11 +35,22 @@ release version: build-image (tag-image version)
     {{runtime}} push {{registry}}/{{image_name}}:latest
     {{runtime}} push {{registry}}/{{image_name}}:{{version}}
 
+# Trigger CI image build via GitHub Actions
+build-ci:
+    gh workflow run "Build Images"
+    @echo "Workflow triggered. Watch with: gh run watch"
+
 # Build image and test in a throwaway distrobox
 test-local: build-image
-    -distrobox rm homebase-test --force
-    distrobox create --image {{registry}}/{{image_name}}:latest --name homebase-test
-    @echo "Created distrobox 'homebase-test'. Enter with: distrobox enter homebase-test"
+    #!/usr/bin/env bash
+    set -euo pipefail
+    distrobox rm homebase-test --force 2>/dev/null || true
+    VOLUME_FLAGS=""
+    if [[ -d "/home/linuxbrew" ]]; then
+        VOLUME_FLAGS="--volume /home/linuxbrew:/home/linuxbrew"
+    fi
+    distrobox create --image {{registry}}/{{image_name}}:latest --name homebase-test $VOLUME_FLAGS
+    echo "Created distrobox 'homebase-test'. Enter with: distrobox enter homebase-test"
 
 # ── Dotfile Development ──────────────────────────────────────────────────
 
