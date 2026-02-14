@@ -151,7 +151,7 @@ if stamp_check "05-dotfiles"; then
     skip "Dotfiles already applied"
 else
     # Retrieve GitHub PAT from 1Password
-    GITHUB_PAT="$(op item get "github-pat" --fields label="credential")"
+    GITHUB_PAT="$(op read "op://Private/github-pat/credential")"
 
     # Pre-populate known_hosts so chezmoi externals (forge clone via SSH) don't hang
     mkdir -p "$HOME/.ssh"
@@ -222,7 +222,7 @@ else
         stamp_done "07-distrobox"
     else
         # Retrieve PAT again (may have been cleared from env)
-        GITHUB_PAT="$(op item get "github-pat" --fields label="credential")"
+        GITHUB_PAT="$(op read "op://Private/github-pat/credential")"
 
         # Login to GHCR for private image pull
         echo "$GITHUB_PAT" | podman login ghcr.io -u farra --password-stdin
