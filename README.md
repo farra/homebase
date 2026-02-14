@@ -8,7 +8,9 @@ Homebase uses a layered approach (see below). The core is the host configuration
 
 I'm also stealing a git worktree idea of [schmux](https://github.com/sergeknystautas/schmux) for my local `~/dev` directory, allowing for faster checkouts of branches. 
 
-The heart of everything is still (doom) emacs. It's ultimately where I live. 
+The heart of everything is still [(doom) emacs](https://github.com/doomemacs/doomemacs). It's ultimately where I live. You can see my emacs config here, particularly how I'm using [agent-shell](https://github.com/xenodium/agent-shell) and other tools for coding.
+
+Homebase downloads my private `forge` repo, my digital "second brain" built on years of **`org-mode` + Obsidian vault** files. If you're not doing something similar, I recommend looking into Obsidian, particularly with how well it pairs with tools like Claude. Of course, if you _really_ want to improve your life, learn emacs and org-mode.
 
 The philosophy here is clear layers, clear isolation, and secure repeatabilty. It may seem like a lot, but this keeps me sane when I'm quickly moving between different projects, testing out ideas, and doing so in a way that doesn't clutter up my machine. 
 
@@ -34,13 +36,13 @@ Layer 2: Per-project toolchains (cautomaton-develops, separate repo)
 
 ## Prerequisites
 
-You need these items in your 1Password **Private** vault:
+You need these items in your 1Password **Private** vault (item names are configurable — see `.chezmoi.toml.tmpl` and `bootstrap/bazzite.sh`):
 
-| Item                      | Field/Files                 | Purpose                                         |
+| Item (default name)       | Field/Files                 | Purpose                                         |
 |---------------------------|-----------------------------|-------------------------------------------------|
-| `cautomaton-ssh-key`      | `private key`, `public key` | SSH key pair                                    |
-| `github-pat`              | `credential`                | GitHub PAT with `repo` + `read:packages` scopes |
-| `cautomaton-homebase-gpg` | `public.asc`, `secret.asc`  | GPG key for encrypting `~/.authinfo.gpg`        |
+| SSH key item              | `private key`, `public key` | SSH key pair                                    |
+| GitHub PAT item           | `credential`                | GitHub PAT with `repo` + `read:packages` scopes |
+| GPG key item              | `public.asc`, `secret.asc`  | GPG key for encrypting `~/.authinfo.gpg`        |
 
 ## Quick Start
 
@@ -60,13 +62,15 @@ See [BOOTSTRAP.md](./BOOTSTRAP.md) for the full walkthrough, verification steps,
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 brew install chezmoi 1password-cli
 eval "$(op signin)"
-op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-public.asc" | gpg --batch --import
-op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-secret.asc" | gpg --batch --import
-echo "48CF4CDEC93AE47B93491C7A43EBD702731ECFAC:6:" | gpg --batch --import-ownertrust
-chezmoi init --apply farra/homebase
+op read "op://Private/<your-gpg-key-item>/homebase-authinfo-public.asc" | gpg --batch --import
+op read "op://Private/<your-gpg-key-item>/homebase-authinfo-secret.asc" | gpg --batch --import
+echo "<your-gpg-fingerprint>:6:" | gpg --batch --import-ownertrust
+chezmoi init --apply <your-github-user>/homebase
 brew bundle --file=~/.local/share/chezmoi/Brewfile
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh
 ```
+
+> **Note:** Replace `<your-gpg-key-item>`, `<your-gpg-fingerprint>`, and `<your-github-user>` with your own values. On Bazzite, these are configured in `bootstrap/bazzite.sh`. For chezmoi templates, they're prompted during `chezmoi init`.
 
 ## Workspace Layout
 

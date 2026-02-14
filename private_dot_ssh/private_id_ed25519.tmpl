@@ -1,1 +1,1 @@
-{{- onepasswordRead "op://Private/cautomaton-ssh-key/private key" -}}
+{{- onepasswordRead (printf "op://Private/%s/private key" .op_ssh_key) -}}

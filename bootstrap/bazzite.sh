@@ -6,14 +6,23 @@
 #
 # Prerequisites:
 #   - 1Password account with these items in the Private vault:
-#     - cautomaton-ssh-key (fields: "private key", "public key")
-#     - github-pat (field: "credential") — PAT with repo + read:packages scopes
-#     - cautomaton-homebase-gpg (files: public.asc, secret.asc) — GPG key for authinfo
+#     - SSH key item (fields: "private key", "public key") — see OP_SSH_KEY below
+#     - GitHub PAT item (field: "credential") — see OP_GITHUB_PAT below
+#     - GPG key item (files: public.asc, secret.asc) — see OP_GPG_KEY below
 #
 # Usage:
 #   bash bazzite.sh
 
 set -euo pipefail
+
+# ── Configuration (change these for your own setup) ──────────────────────────
+OP_SSH_KEY="cautomaton-ssh-key"
+OP_GITHUB_PAT="github-pat"
+OP_GPG_KEY="cautomaton-homebase-gpg"
+GPG_KEY_FPR="48CF4CDEC93AE47B93491C7A43EBD702731ECFAC"
+GITHUB_USER="farra"
+GHCR_IMAGE="ghcr.io/farra/homebase:latest"
+# ─────────────────────────────────────────────────────────────────────────────
 
 STAMP_DIR="$HOME/.homebase-bootstrap"
 mkdir -p "$STAMP_DIR"
@@ -120,11 +129,11 @@ if ! op whoami &>/dev/null 2>&1; then
 fi
 
 # Verify we can read from the vault
-if op item get "cautomaton-ssh-key" --fields label="private key" &>/dev/null 2>&1; then
+if op item get "$OP_SSH_KEY" --fields label="private key" &>/dev/null 2>&1; then
     ok "1Password session active"
     stamp_done "03-op-auth"
 else
-    echo "ERROR: Cannot read from 1Password vault. Is 'cautomaton-ssh-key' in Private vault?"
+    echo "ERROR: Cannot read from 1Password vault. Is '$OP_SSH_KEY' in Private vault?"
     exit 1
 fi
 
@@ -132,17 +141,15 @@ fi
 
 info "Phase 4: GPG keys for authinfo encryption"
 
-GPG_KEY_FPR="48CF4CDEC93AE47B93491C7A43EBD702731ECFAC"
-
 if stamp_check "04-gpg-keys"; then
     skip "GPG keys already imported"
 else
     if gpg --list-secret-keys "$GPG_KEY_FPR" &>/dev/null; then
         ok "GPG key already in keyring (re-stamping)"
     else
-        op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-public.asc" | \
+        op read "op://Private/${OP_GPG_KEY}/homebase-authinfo-public.asc" | \
             gpg --batch --import
-        op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-secret.asc" | \
+        op read "op://Private/${OP_GPG_KEY}/homebase-authinfo-secret.asc" | \
             gpg --batch --import
         echo "${GPG_KEY_FPR}:6:" | gpg --batch --import-ownertrust
         ok "GPG keys imported and trusted"
@@ -158,7 +165,7 @@ if stamp_check "05-dotfiles"; then
     skip "Dotfiles already applied"
 else
     # Retrieve GitHub PAT from 1Password
-    GITHUB_PAT="$(op read "op://Private/github-pat/credential")"
+    GITHUB_PAT="$(op read "op://Private/${OP_GITHUB_PAT}/credential")"
 
     # Pre-populate known_hosts so chezmoi externals (forge clone via SSH) don't hang
     mkdir -p "$HOME/.ssh"
@@ -170,13 +177,13 @@ else
     chmod 700 "$GIT_ASKPASS"
     trap 'rm -f "$GIT_ASKPASS"' EXIT
     printf '#!/bin/sh\necho "%s"\n' "$GITHUB_PAT" > "$GIT_ASKPASS"
-    chezmoi init --apply "https://farra@github.com/farra/homebase.git"
+    chezmoi init --apply "https://${GITHUB_USER}@github.com/${GITHUB_USER}/homebase.git"
     rm -f "$GIT_ASKPASS"
     trap - EXIT
     unset GIT_ASKPASS
 
     # Switch chezmoi remote to SSH (now that SSH keys are installed)
-    chezmoi git -- remote set-url origin git@github.com:farra/homebase.git
+    chezmoi git -- remote set-url origin "git@github.com:${GITHUB_USER}/homebase.git"
     ok "Chezmoi remote switched to SSH (future updates use SSH key)"
 
     # Verify SSH key landed
@@ -233,13 +240,13 @@ else
         stamp_done "07-distrobox"
     else
         # Retrieve PAT again (may have been cleared from env)
-        GITHUB_PAT="$(op read "op://Private/github-pat/credential")"
+        GITHUB_PAT="$(op read "op://Private/${OP_GITHUB_PAT}/credential")"
 
         # Login to GHCR for private image pull
-        echo "$GITHUB_PAT" | podman login ghcr.io -u farra --password-stdin
+        echo "$GITHUB_PAT" | podman login ghcr.io -u "$GITHUB_USER" --password-stdin
 
         # Pull the baked image
-        podman pull ghcr.io/farra/homebase:latest
+        podman pull "$GHCR_IMAGE"
 
         # Create distrobox (--home shares host $HOME)
         # Mount host Homebrew if installed to /home/linuxbrew (not in $HOME)
@@ -247,7 +254,7 @@ else
         if [[ -d "/home/linuxbrew" ]]; then
             VOLUME_FLAGS="--volume /home/linuxbrew:/home/linuxbrew"
         fi
-        distrobox create --image ghcr.io/farra/homebase:latest --name home \
+        distrobox create --image "$GHCR_IMAGE" --name home \
             --init-hooks "usermod -s /usr/bin/zsh $USER" \
             $VOLUME_FLAGS
 

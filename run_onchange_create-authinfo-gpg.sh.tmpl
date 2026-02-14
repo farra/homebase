@@ -3,11 +3,11 @@
 # Runs when PAT changes (chezmoi run_onchange_ hashes rendered content)
 #
 # Change-detection hash (do not edit):
-# {{ onepasswordRead "op://Private/github-pat/credential" | sha256sum }}
+# {{ onepasswordRead (printf "op://Private/%s/credential" .op_github_pat) | sha256sum }}
 
 set -euo pipefail
 
-GPG_KEY_FPR="48CF4CDEC93AE47B93491C7A43EBD702731ECFAC"
+GPG_KEY_FPR="{{ .gpg_key_fingerprint }}"
 TARGET="$HOME/.authinfo.gpg"
 
 # Verify GPG key is available
@@ -19,7 +19,7 @@ if ! gpg --list-keys "$GPG_KEY_FPR" &>/dev/null; then
 fi
 
 # Fetch PAT at runtime (not baked into script)
-PAT="$(op read "op://Private/github-pat/credential")"
+PAT="$(op read "op://Private/{{ .op_github_pat }}/credential")"
 
 # Encrypt directly to file — plaintext never touches disk
 printf 'machine api.github.com login %s^forge password %s\n' \

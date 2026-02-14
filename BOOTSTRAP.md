@@ -4,13 +4,13 @@ Canonical walkthrough for bootstrapping a new machine with homebase.
 
 ## Prerequisites
 
-1. **1Password account** with these items in your **Private** vault:
+1. **1Password account** with these items in your **Private** vault (item names are configurable in `bootstrap/bazzite.sh`):
 
-   | Item                      | Field/Files                | Purpose                                         |
+   | Item (default name)       | Field/Files                | Purpose                                         |
    |---------------------------|----------------------------|-------------------------------------------------|
-   | `cautomaton-ssh-key`      | `private key`, `public key`| SSH key pair                                    |
-   | `github-pat`              | `credential`               | GitHub PAT with `repo` + `read:packages` scopes |
-   | `cautomaton-homebase-gpg` | `public.asc`, `secret.asc` | GPG key for encrypting `~/.authinfo.gpg`        |
+   | SSH key item              | `private key`, `public key`| SSH key pair                                    |
+   | GitHub PAT item           | `credential`               | GitHub PAT with `repo` + `read:packages` scopes |
+   | GPG key item              | `public.asc`, `secret.asc` | GPG key for encrypting `~/.authinfo.gpg`        |
 
 2. **Network access** to GitHub, Homebrew, and 1Password
 
@@ -108,12 +108,12 @@ brew install --cask 1password-cli
 eval "$(op signin)"
 
 # 4. Import GPG key for authinfo encryption
-op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-public.asc" | gpg --batch --import
-op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-secret.asc" | gpg --batch --import
-echo "48CF4CDEC93AE47B93491C7A43EBD702731ECFAC:6:" | gpg --batch --import-ownertrust
+op read "op://Private/<your-gpg-key-item>/homebase-authinfo-public.asc" | gpg --batch --import
+op read "op://Private/<your-gpg-key-item>/homebase-authinfo-secret.asc" | gpg --batch --import
+echo "<your-gpg-fingerprint>:6:" | gpg --batch --import-ownertrust
 
 # 5. Dotfiles (SSH keys, forge clone, encrypted authinfo, all configs)
-chezmoi init --apply farra/homebase
+chezmoi init --apply <your-github-user>/homebase
 
 # 6. Remaining Homebrew packages (including Nerd Fonts)
 brew bundle --file=~/.local/share/chezmoi/Brewfile

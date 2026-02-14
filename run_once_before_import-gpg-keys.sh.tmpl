@@ -4,7 +4,7 @@
 
 set -euo pipefail
 
-GPG_KEY_FPR="48CF4CDEC93AE47B93491C7A43EBD702731ECFAC"
+GPG_KEY_FPR="{{ .gpg_key_fingerprint }}"
 
 # Skip if key is already in the keyring
 if gpg --list-secret-keys "$GPG_KEY_FPR" &>/dev/null; then
@@ -15,11 +15,11 @@ fi
 echo "Importing GPG keys from 1Password..."
 
 # Import public key
-op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-public.asc" | \
+op read "op://Private/{{ .op_gpg_key }}/homebase-authinfo-public.asc" | \
     gpg --batch --import
 
 # Import secret key
-op read "op://Private/cautomaton-homebase-gpg/homebase-authinfo-secret.asc" | \
+op read "op://Private/{{ .op_gpg_key }}/homebase-authinfo-secret.asc" | \
     gpg --batch --import
 
 # Set ultimate trust (it's our own key)
