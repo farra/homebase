@@ -2,6 +2,8 @@
 
 Machine substrate for consistent development environments across macOS, Bazzite Linux, and WSL.
 
+Git worktrees and nix develop subshells provide per-agent workspace isolation and per-project toolchains.
+
 **Status:** Implementation
 **Repo:** `farra/homebase` (private)
 
@@ -9,13 +11,14 @@ Machine substrate for consistent development environments across macOS, Bazzite 
 
 ```
 Layer 0: Host (OS-specific bootstrap)
-├── Bazzite:  Homebrew → chezmoi, just, direnv, 1password-cli
+├── Bazzite:  Homebrew → chezmoi, just, direnv, zsh, 1password-cli
 ├── WSL:      (future, same pattern)
 └── macOS:    (future, Homebrew + nix native)
 
 Layer 1: Homebase distrobox (baked image via Nix flake)
-├── All dev tools pre-installed (ripgrep, fd, fzf, bat, eza, etc.)
-├── Emacs (exported to host desktop)
+├── All dev tools pre-installed (ripgrep, fd, fzf, bat, eza, starship, etc.)
+├── Emacs with vterm (exported to host desktop)
+├── Fedora toolbox base (distrobox-compatible)
 └── $HOME shared with host (chezmoi dotfiles visible in both)
 
 Layer 2: Per-project nix flakes (cautomaton-develops, out of scope)
@@ -56,7 +59,7 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 
 ## Workspace Layout
 
-`chezmoi apply` sets up the workspace automatically:
+After bootstrap and `homebase setup`, the workspace looks like:
 
 ```
 ~/
@@ -67,6 +70,8 @@ curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix 
 │   ├── jmt/                # github.com/jamandtea
 │   ├── ref/                # Third-party / reference
 │   └── justfile            # Workspace commands (worktree lifecycle)
+├── .homebase/
+│   └── justfile            # User commands (setup, updates, distrobox)
 └── .ssh/                   # SSH keys from 1Password templates
 ```
 
@@ -83,61 +88,73 @@ just wts                               # list all active worktrees
 just wt-rm me/projectA-fix-auth        # clean up (keeps branch)
 ```
 
-Emacs + agents work in the copies under the group dirs. Forge does *not* follow this pattern — it's a regular clone at `~/forge`.
+Forge does *not* follow this pattern — it's a regular clone at `~/forge`.
+
+## Two Justfiles
+
+**`./justfile`** — for working *on* homebase (the project). Run from the repo checkout:
+
+```bash
+just build-image        # Build baked distrobox image
+just test-local         # Build + create test distrobox
+just check              # Run nix flake check
+just dev                # Nix develop shell (macOS)
+just re-add             # Stage changes back to chezmoi source
+just push               # Commit and push
+```
+
+**`~/.homebase/justfile`** — for living *in* homebase. Run via the `homebase` shell alias:
+
+```bash
+homebase setup              # First-time: workspace + Doom + agents
+homebase update             # Update everything (dotfiles + host + agents)
+homebase doom-sync          # After Doom config changes
+homebase distrobox-rebuild  # Pull fresh image + recreate distrobox
+homebase                    # List all commands
+```
 
 ## Repository Structure
 
 ```
 .
-├── flake.nix                  # Nix flake (dev tools for container + macOS)
-├── flake.lock                 # Nix flake lock
-├── images/Containerfile       # Baked distrobox image
-├── bootstrap/bazzite.sh       # Layer 0 bootstrap for Bazzite
-├── homebase.toml              # Tool definitions (source of truth)
-├── Brewfile                   # Host substrate tools
-├── justfile                   # Orchestration commands
-├── secretspec.toml            # Runtime secrets declaration
-├── .chezmoi.toml.tmpl         # chezmoi config
-├── .chezmoiexternal.toml      # External repos (forge)
-├── .chezmoiignore             # Files excluded from chezmoi apply
-├── run_once_create-workspace.sh  # Creates ~/dev/{.worktrees,me,jmt,ref}
-├── dev/justfile               # Workspace commands (→ ~/dev/justfile)
-├── dot_config/doom/           # Doom Emacs config
-├── dot_gitconfig.tmpl         # Git config (templated)
-├── dot_zshrc.tmpl             # Shell config
-└── private_dot_ssh/
-    ├── config.tmpl            # SSH config
-    ├── private_id_rsa.tmpl    # Private key (from 1Password)
-    └── id_rsa.pub.tmpl        # Public key (from 1Password)
+├── flake.nix                     # Nix flake (all container tools)
+├── flake.lock
+├── images/Containerfile          # Baked distrobox image (fedora-toolbox base)
+├── bootstrap/bazzite.sh          # Layer 0 bootstrap (6 phases, idempotent)
+├── homebase.toml                 # Tool definitions (source of truth)
+├── Brewfile                      # Host-only tools (Homebrew)
+├── justfile                      # Project development commands
+├── secretspec.toml               # Runtime secrets declaration
+├── .chezmoi.toml.tmpl            # chezmoi config
+├── .chezmoiexternal.toml         # External repos (forge)
+├── .chezmoiignore                # Files excluded from chezmoi apply
+├── dot_homebase/justfile          # → ~/.homebase/justfile (user commands)
+├── dev/justfile                   # → ~/dev/justfile (worktree lifecycle)
+├── dot_config/
+│   ├── doom/                     # Doom Emacs config
+│   ├── starship.toml             # Starship prompt (Nerd Font Symbols + nix detect)
+│   ├── gh/config.yml             # GitHub CLI config
+│   ├── zed/settings.json         # Zed editor config
+│   └── glow/glow.yml             # Markdown viewer config
+├── dot_zshrc.tmpl                # Shell config (zsh + plugins + aliases)
+├── dot_gitconfig.tmpl            # Git config (templated)
+├── private_dot_authinfo.tmpl     # Emacs auth-source (GitHub PAT from 1Password)
+├── private_dot_ssh/              # SSH keys + config (from 1Password)
+├── dot_claude/                   # Claude Code settings
+├── dot_codex/                    # Codex CLI settings
+├── dot_gemini/                   # Gemini CLI settings
+└── .github/workflows/            # CI: build + push image to GHCR
 ```
 
-## Commands
+## Shell Environment
 
-```bash
-just                    # List available commands
-just apply              # Apply dotfiles via chezmoi
-just sync               # Full sync (pull + apply + host tools)
-just build-image        # Build baked distrobox image
-just test-local         # Build + create test distrobox
-just distrobox-enter    # Enter homebase distrobox
-just dev                # Nix develop shell (macOS)
-```
-
-## Development
-
-### Making Changes
-
-```bash
-just apply              # Apply locally
-just re-add             # Stage changes back to chezmoi source
-just push               # Commit and push
-```
-
-### Testing the Image
-
-```bash
-just build-image        # Build locally
-just test-local         # Create throwaway distrobox
-distrobox enter homebase-test
-# Verify: which emacs rg fd fzf bat just direnv chezmoi
-```
+Zsh with:
+- **Starship** prompt (Nerd Font Symbols, nix develop detection)
+- **Atuin** for shell history sync
+- **Zoxide** for smart directory jumping
+- **fzf** with fd backend (Ctrl-T files, Alt-C dirs)
+- **zsh-autosuggestions** and **zsh-syntax-highlighting**
+- Smart aliases: `eza` as `ls`, `bat` as `cat`, `delta` as `diff`, `btm` as `top`
+- Git aliases: `gs`, `gd`, `gl`, `gla`, `gw`, `gwl`, `lg` (lazygit)
+- FiraCode + FiraMono Nerd Fonts (host-level install)
+- Nushell available (not default)

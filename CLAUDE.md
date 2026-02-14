@@ -2,9 +2,9 @@
 
 ## Project Overview
 
-Homebase provides a machine substrate for consistent development environments across macOS, Bazzite Linux (and other Universal Blue immutable distros), and WSL. It replaces an older Dropbox-based setup (`~/dropbox/Home/wsl-setup-script.sh`) with a modern, cross-platform approach.
+Homebase provides a machine substrate for consistent development environments across macOS, Bazzite Linux (and other Universal Blue immutable distros), and WSL. Git worktrees and nix develop subshells provide per-agent workspace isolation and per-project toolchains.
 
-**Status:** Implementation (early stage, not yet tested on clean machines)
+**Status:** Implementation (not yet tested on clean machines)
 
 **Owner:** J. Aaron Farr (farra)
 
@@ -29,19 +29,18 @@ Homebase provides a machine substrate for consistent development environments ac
 ### Layered Model
 
 ```
-Layer 0: Homebrew (universal substrate)
-         All platforms: git, chezmoi, zsh, just, bitwarden-cli, direnv, ripgrep, fd, fzf...
-         macOS only: Emacs (cask)
-         Bazzite/WSL: distrobox (pre-installed or via package manager)
+Layer 0: Host (OS-specific bootstrap)
+├── Bazzite:  Homebrew → chezmoi, just, direnv, zsh, 1password-cli
+├── WSL:      (future, same pattern)
+└── macOS:    (future, Homebrew + nix native)
 
-Layer 1: Primary Dev Environment
-         macOS: Nix (native) + Homebrew GUI apps
-         Bazzite/WSL: distrobox "home" container with Nix inside
-                      Emacs exported to host via distrobox-export
+Layer 1: Homebase distrobox (baked image via Nix flake)
+├── All dev tools pre-installed (ripgrep, fd, fzf, bat, eza, starship, etc.)
+├── Emacs with vterm (exported to host desktop via distrobox-export)
+├── Fedora toolbox:43 base (distrobox-compatible)
+└── $HOME shared with host (chezmoi dotfiles visible in both)
 
-Layer 2: Project-Specific (cautomaton-develops)
-         nix develop with deps.toml
-         Runs inside distrobox on Linux, native on macOS
+Layer 2: Per-project nix flakes (cautomaton-develops, out of scope)
 ```
 
 ### Platform Matrix
@@ -62,248 +61,166 @@ Layer 2: Project-Specific (cautomaton-develops)
 
 **Native Nix on macOS:** Nix works well natively; no distrobox friction.
 
+**Baked image:** All tools pre-installed via `nix profile install` during image build. No bootstrap step inside the container — `distrobox enter home` gives a fully equipped environment immediately.
+
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `DECISIONS.md` | Open decisions requiring resolution |
 | `homebase.toml` | Single source of truth for tool definitions |
-| `Brewfile` | Host substrate tools (macOS/Linux) |
-| `Containerfile.slim` | Distrobox image with Nix pre-installed |
-| `justfile` | Orchestration commands |
-| `secretspec.toml` | Runtime secrets declaration |
-| `.chezmoi.toml.tmpl` | chezmoi config with user data |
+| `flake.nix` | Nix flake defining all container tools |
+| `images/Containerfile` | Baked distrobox image (fedora-toolbox base + Nix) |
+| `bootstrap/bazzite.sh` | Layer 0 bootstrap (6 idempotent phases) |
+| `Brewfile` | Host-only tools (Homebrew) |
+| `justfile` | Project development commands (image build, flake check) |
+| `dot_homebase/justfile` | User commands (setup, updates, distrobox lifecycle) |
+| `dev/justfile` | Workspace commands (worktree lifecycle) |
+| `dot_zshrc.tmpl` | Shell config (zsh + starship + plugins + aliases) |
+| `dot_config/starship.toml` | Starship prompt (Nerd Font Symbols + nix detect) |
 | `dot_config/doom/` | Doom Emacs configuration |
 | `dot_gitconfig.tmpl` | Git config (templated) |
-| `dot_zshrc.tmpl` | Shell config |
-| `private_dot_ssh/config.tmpl` | SSH config (NOT keys) |
+| `private_dot_authinfo.tmpl` | Emacs auth-source (GitHub PAT from 1Password) |
+| `private_dot_ssh/` | SSH keys + config (from 1Password templates) |
+| `.chezmoi.toml.tmpl` | chezmoi config with user data |
+| `.chezmoiexternal.toml` | External repos (forge clone) |
+| `.chezmoiignore` | Files excluded from chezmoi apply |
+| `secretspec.toml` | Runtime secrets declaration |
+| `DECISIONS.md` | Design decisions and rationale |
 | `.github/workflows/build-image.yml` | CI to build and push OCI image |
 
 ### homebase.toml
 
-Declares tools that should exist everywhere. Consumed by:
-- Brewfile (for macOS/Linux host substrate)
-- justfile bootstrap (for distrobox Nix profile)
+Declares tools per layer. Sections:
 
 ```toml
-[core]
-tools = ["git", "chezmoi", "zsh", "just", "bitwarden-cli", ...]
+[host]        # Homebrew tools for all platforms
+tools = ["git", "chezmoi", "zsh", "just", "direnv"]
 
-[macos]
-casks = ["emacs"]
+[container]   # Nix flake tools baked into the image
+tools = ["ripgrep", "fd", "fzf", "bat", "eza", "starship", "emacs", ...]
 
-[linux]
-extra = ["emacs"]
+[fonts]       # Host-level Nerd Fonts
+nerd-fonts = ["FiraCode", "FiraMono"]
+
+[macos]       # Homebrew casks (macOS only)
+casks = ["emacs", "1password-cli", "font-fira-code-nerd-font", "font-fira-mono-nerd-font"]
+
+[workspace]   # Directory layout docs
 ```
 
-## Bootstrap Flows
+### Two Justfiles
 
-SSH keys are retrieved via chezmoi templates from your password manager — no separate key retrieval step.
+- **`./justfile`** — Project development. Run from repo checkout. Image building, flake checks, dotfile staging.
+- **`~/.homebase/justfile`** — User-facing. Run via `homebase` alias. Setup, updates, distrobox lifecycle, Doom Emacs, AI agents.
 
-### macOS Bootstrap
+## Bootstrap Flow
+
+### Bazzite (scripted)
+
+`bootstrap/bazzite.sh` runs 6 idempotent phases (stamp files in `~/.homebase-bootstrap/`):
+
+1. Install Homebrew (to `~/.linuxbrew`, no root)
+2. Install host tools + set zsh as default shell
+3. Authenticate to 1Password (`op signin`)
+4. Apply dotfiles (`chezmoi init --apply` with PAT-embedded HTTPS URL)
+5. Install Nerd Fonts (FiraCode, FiraMono to `~/.local/share/fonts/`)
+6. Create distrobox (podman login to GHCR, pull image, `distrobox create`)
+
+SSH keys are *output* of chezmoi apply (from 1Password templates), not a prerequisite. This solves the bootstrap paradox.
+
+### macOS (manual, future)
 
 ```bash
-# 1. Install Homebrew
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-
-# 2. Install chezmoi and password manager CLI
-brew install chezmoi
-brew install --cask 1password-cli  # if using 1Password
-# -or-
-brew install bitwarden-cli         # if using Bitwarden
-
-# 3. Authenticate to password manager
-eval $(op signin)                              # 1Password
-# -or-
-bw login && export BW_SESSION=$(bw unlock --raw)  # Bitwarden
-
-# 4. Bootstrap everything (SSH keys come from templates)
+brew install chezmoi && brew install --cask 1password-cli
+eval "$(op signin)"
 chezmoi init --apply farra/homebase
-
-# 5. Install remaining tools
 brew bundle --file=~/.local/share/chezmoi/Brewfile
-
-# 6. Install Nix (for project-level shells)
-curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh
 ```
 
-### Bazzite / WSL (Fedora) Bootstrap
+## Secrets
 
-```bash
-# 1. Install Homebrew (to ~/.linuxbrew)
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
-
-# 2. Install chezmoi and password manager CLI
-brew install chezmoi bitwarden-cli  # Bitwarden available via brew on Linux
-# -or- for 1Password on Fedora:
-# sudo dnf install https://downloads.1password.com/linux/rpm/stable/x86_64/1password-cli-latest.x86_64.rpm
-
-# 3. Authenticate to password manager
-eval $(op signin)                              # 1Password
-# -or-
-bw login && export BW_SESSION=$(bw unlock --raw)  # Bitwarden
-
-# 4. Bootstrap dotfiles (SSH keys come from templates)
-chezmoi init --apply farra/homebase
-
-# 5. Create distrobox with homebase image
-podman pull ghcr.io/farra/homebase:slim
-distrobox create --image ghcr.io/farra/homebase:slim --name home
-
-# 6. First entry bootstraps tools
-distrobox enter home
-just bootstrap
-```
-
-## Just Commands
-
-```bash
-just              # List available commands
-just apply        # Apply dotfiles via chezmoi
-just update       # Pull dotfiles from remote
-just sync         # Full sync (pull + apply + tools)
-just bootstrap    # Install tools via nix profile (Linux distrobox)
-just build-slim   # Build slim distrobox image locally
-just test-slim    # Test slim image in throwaway distrobox
-just enter        # Enter distrobox (Linux only)
-just re-add       # Stage changed dotfiles back to chezmoi
-just push         # Commit and push dotfile changes
-just doom-sync    # Doom Emacs sync after config changes
-```
-
-## Secrets Management
-
-Two layers, one password manager (your choice of 1Password or Bitwarden):
+1Password is the secrets provider. Two layers:
 
 | Layer | Tool | Purpose |
 |-------|------|---------|
-| Bootstrap | chezmoi + password manager | SSH keys (written to ~/.ssh/ during apply) |
-| Runtime | secretspec + password manager | API keys, tokens (injected at runtime) |
-| Team/project | Pulumi ESC | Infrastructure secrets |
+| Bootstrap | chezmoi + 1Password | SSH keys, GitHub PAT for `.authinfo` |
+| Runtime | secretspec + 1Password | API keys, tokens (injected at runtime) |
 
-### How Bootstrap Works
+All templates use `op://Private/...` (1Password's default vault is "Private").
 
-chezmoi clones via HTTPS (no SSH needed), then templates retrieve SSH keys from your password manager:
+## Shell Environment
 
-**With 1Password:**
+Zsh with:
+- **Starship** prompt — Nerd Font Symbols preset, `nix_shell` heuristic for `nix develop` detection
+- **Atuin** — shell history sync (replaces Ctrl-R)
+- **Zoxide** — smart cd (`z` command)
+- **fzf** — fuzzy finder with fd backend (Ctrl-T files, Alt-C dirs)
+- **zsh-autosuggestions** — ghost-text from history
+- **zsh-syntax-highlighting** — green/red command validation
+- **Nushell** — available (not default)
+- Smart aliases: `eza`→`ls`, `bat`→`cat`/`less`, `delta`→`diff`, `btm`→`top`, `lazygit`→`lg`, `tldr`→`help`, `glow`→`md`
+- Git aliases: `gs`, `gd`, `gds`, `gl`, `gla`, `ga`, `gc`, `gco`, `gb`, `gw`, `gwl`
+- FiraCode + FiraMono Nerd Fonts (host-level)
+
+## Workspace Model
+
+Git worktrees provide per-agent workspace isolation:
+
 ```
-private_dot_ssh/private_id_rsa.tmpl:
-{{- onepasswordRead "op://Personal/ssh-key/private_key" -}}
+~/dev/.worktrees/      # Bare clones (hidden)
+~/dev/me/              # github.com/farra worktrees
+~/dev/jmt/             # github.com/jamandtea worktrees
+~/dev/ref/             # Third-party / reference worktrees
+~/forge/               # Regular clone (not worktree pattern)
 ```
 
-**With Bitwarden:**
+Managed via `~/dev/justfile`: `just clone`, `just wt`, `just wt-rm`, `just wts`
+
+## AI Agent Guidelines
+
+When helping with this project:
+
+1. **Prefer editing existing files** — Don't create new config files without discussion
+2. **Keep homebase.toml in sync** — If adding tools, update `homebase.toml`, `flake.nix`, and `dot_zshrc.tmpl` (if alias/init needed)
+3. **Consider all platforms** — Changes should work on macOS, Bazzite, and WSL
+4. **Respect immutability** — Don't assume root access or system-level changes on Bazzite
+5. **Use the right justfile** — Project dev commands in `./justfile`, user-facing commands in `dot_homebase/justfile`
+
+### Common Tasks
+
+**Add a new tool:**
+1. Add to `homebase.toml` `[container]` tools
+2. Add to `flake.nix` homebasePackages
+3. If it needs shell init or alias, add to `dot_zshrc.tmpl`
+4. Run `nix flake check`
+
+**Add a host-only tool:**
+1. Add to `homebase.toml` `[host]` tools
+2. Add to `Brewfile`
+
+**Update Doom Emacs config:**
+1. Edit files in `dot_config/doom/`
+2. Run `chezmoi apply` to apply locally
+3. Run `homebase doom-sync` to sync Doom
+
+**Test distrobox image:**
+```bash
+just build-image
+just test-local
+distrobox enter homebase-test
+which emacs rg fd fzf bat starship
 ```
-private_dot_ssh/private_id_rsa.tmpl:
-{{- (bitwarden "item" "ssh-key").notes | b64dec -}}
-```
 
-This solves the "bootstrap paradox" — SSH keys are *output* of `chezmoi apply`, not a prerequisite.
-
-### Password Manager Comparison
-
-| Feature | 1Password | Bitwarden |
-|---------|-----------|-----------|
-| Cost | $36/year | Free |
-| chezmoi syntax | `onepasswordRead "op://..."` | `(bitwarden "item" "name").notes` |
-| SSH key handling | Clean | Needs base64 encode/decode |
-
-See [DECISIONS.md](./DECISIONS.md) for full comparison.
-
-### Runtime Secrets
-
-API keys (Claude, OpenAI, GitHub) are declared in `secretspec.toml` and retrieved via secretspec. Both 1Password and Bitwarden work as secretspec providers.
-
-## Testing Targets
-
-The project needs testing on:
-
-1. **Clean WSL Fedora** — `wsl --unregister Fedora && wsl --install -d Fedora`
-2. **Clean Bazzite Linux** — Fresh Bazzite VM or hardware install
-
-Testing checklist:
-- [ ] Homebrew installs successfully
-- [ ] Password manager CLI authenticates
-- [ ] chezmoi init --apply retrieves SSH keys from password manager
-- [ ] SSH keys have correct permissions (600 for private, 644 for public)
-- [ ] distrobox image builds
-- [ ] just bootstrap completes
-- [ ] Emacs exports to host desktop
-- [ ] dot_zshrc.tmpl applies correctly
-- [ ] doom sync works
-
-## Current Status
-
-**Implemented:**
-- homebase.toml tool definitions
-- Brewfile for host substrate
-- Containerfile.slim for distrobox image
-- justfile with core commands
-- chezmoi templates (gitconfig, zshrc, ssh config)
-- Doom Emacs config files
-- secretspec.toml declarations
-- GitHub Actions workflow for image building
-
-**Not Yet Tested:**
-- Full bootstrap on clean WSL Fedora
-- Full bootstrap on clean Bazzite
-- macOS bootstrap
-- distrobox image pull from ghcr.io
-- Emacs export to host
-
-**Open Decisions:** See [DECISIONS.md](./DECISIONS.md) for full analysis. Critical path:
-1. Secrets provider (Bitwarden vs 1Password vs chezmoi-native)
-2. Whether to keep Dropbox (for forge vault) or drop entirely
-3. Testing on clean machines to validate the approach
+**Debug bootstrap issues:**
+- Check stamp files: `ls ~/.homebase-bootstrap/`
+- Check nix: `which nix` and PATH includes `~/.nix-profile/bin`
+- Check chezmoi: `chezmoi diff`
+- Check 1Password: `op account list`
 
 ## Related Projects
 
 | Project | Relationship |
 |---------|--------------|
 | [cautomaton-develops](https://github.com/farra/cautomaton-develops) | Project-level Nix environments (Layer 2) |
-| [agentboxes](https://github.com/farra/agentboxes) | AI agent environment definitions (OCI patterns) |
+| [agentboxes](https://github.com/farra/agentboxes) | AI agent environment definitions (OCI image patterns) |
 | [forge](https://github.com/farra/forge) | Personal productivity system (journal + vault) |
-| `~/dropbox/Home` | Legacy setup being replaced |
-
-## Design Documentation
-
-Full design rationale is in `~/forge/vault/devenv/homebase/README.md`, including:
-- Nix on Universal Blue research (why Nix on host is unsupported)
-- `nix profile` vs `nix develop` concepts
-- Slim vs Full image tradeoffs
-- Secrets management architecture
-
-## AI Agent Guidelines
-
-When helping with this project:
-
-1. **Test changes locally first** — Use `just build-slim` and `just test-slim`
-2. **Prefer editing existing files** — Don't create new config files without discussion
-3. **Keep homebase.toml in sync** — If adding tools, update both homebase.toml and Brewfile
-4. **Check secretspec** — If a new secret is needed, declare it in secretspec.toml
-5. **Consider all platforms** — Changes should work on macOS, Bazzite, and WSL
-6. **Respect immutability** — Don't assume root access or system-level changes on Bazzite
-
-### Common Tasks
-
-**Add a new tool:**
-1. Add to `homebase.toml` [core] tools
-2. Add to `Brewfile`
-3. Add to `justfile` bootstrap nix profile install line
-
-**Update Doom Emacs config:**
-1. Edit files in `dot_config/doom/`
-2. Run `just apply` to apply via chezmoi
-3. Run `just doom-sync` to sync Doom
-
-**Test distrobox image:**
-```bash
-just build-slim
-just test-slim
-# Then: distrobox enter homebase-test
-```
-
-**Debug bootstrap issues:**
-- Check `/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh` exists
-- Check `~/.nix-profile/bin` is in PATH
-- Check `~/.homebase-bootstrapped` marker file

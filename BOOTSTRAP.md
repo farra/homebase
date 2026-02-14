@@ -30,22 +30,26 @@ Since the repo is private, you can't `curl` the bootstrap script. Options:
 bash bazzite.sh
 ```
 
-The script runs 5 idempotent phases, each guarded by a stamp file in `~/.homebase-bootstrap/`:
+The script runs 6 idempotent phases, each guarded by a stamp file in `~/.homebase-bootstrap/`:
 
 **Phase 1: Homebrew** — Installs to `~/.linuxbrew` (no root, no rpm-ostree)
 
-**Phase 2: Host tools** — `brew install chezmoi just direnv git zsh 1password-cli`
+**Phase 2: Host tools** — `brew install chezmoi just direnv git zsh 1password-cli`. Sets zsh as default shell via `chsh` (distrobox inherits host `$SHELL`).
 
 **Phase 3: 1Password** — `op signin` (opens browser for authentication)
 
 **Phase 4: Dotfiles** — Retrieves GitHub PAT from 1Password, runs `chezmoi init --apply` with PAT-embedded HTTPS URL. This:
   - Clones the private repo via HTTPS (no SSH needed yet)
   - Writes SSH keys to `~/.ssh/` from 1Password templates
-  - Applies all dotfiles (git config, zsh config, Doom Emacs config)
+  - Applies all dotfiles (zshrc, gitconfig, starship, Doom Emacs config)
+  - Writes `.authinfo` for Emacs/magit (GitHub PAT from 1Password)
   - Clones `~/forge` via `.chezmoiexternal.toml`
-  - Creates `~/dev/{me,jmt,ref}` via `run_once_` script
+  - Installs `~/.homebase/justfile` and `~/dev/justfile`
+  - Installs AI tool configs (claude, codex, gemini settings)
 
-**Phase 5: Distrobox** — Logs into GHCR with the PAT, pulls the baked image, creates distrobox `home`
+**Phase 5: Fonts** — Downloads FiraCode and FiraMono Nerd Fonts to `~/.local/share/fonts/NerdFonts/`
+
+**Phase 6: Distrobox** — Logs into GHCR with the PAT, pulls the baked image, creates distrobox `home`
 
 ### After Bootstrap
 
@@ -53,14 +57,15 @@ The script runs 5 idempotent phases, each guarded by a stamp file in `~/.homebas
 # Enter the dev environment (all tools pre-installed)
 distrobox enter home
 
-# First-time container setup (installs Doom Emacs)
-cd ~/.homebase && just setup
+# First-time setup (workspace dirs + Doom Emacs + AI agents)
+homebase setup
 
 # Export Emacs to the KDE desktop
-just doom-export
+homebase doom-export
 
 # Verify tools
-which emacs rg fd fzf bat just direnv chezmoi
+which emacs rg fd fzf bat just direnv chezmoi starship
+starship --version
 ```
 
 ### Re-running
@@ -99,10 +104,10 @@ brew install --cask 1password-cli
 # 3. Authenticate
 eval "$(op signin)"
 
-# 4. Dotfiles (SSH keys, forge clone, workspace dirs — all handled)
+# 4. Dotfiles (SSH keys, forge clone, all configs — handled)
 chezmoi init --apply farra/homebase
 
-# 5. Remaining Homebrew packages
+# 5. Remaining Homebrew packages (including Nerd Fonts)
 brew bundle --file=~/.local/share/chezmoi/Brewfile
 
 # 6. Nix (for project-level shells)
@@ -115,7 +120,7 @@ On macOS there's no distrobox — Nix runs natively. Use `just dev` for a nix de
 
 ## WSL / Fedora (Future)
 
-Same flow as Bazzite. When ready, the `bazzite.sh` script should work on WSL Fedora with minimal changes (Homebrew path is the same).
+Same flow as Bazzite. The `bazzite.sh` script should work on WSL Fedora with minimal changes (Homebrew path is the same).
 
 ---
 
@@ -127,12 +132,14 @@ A single `chezmoi apply` handles:
 |--------------------|-------------------------------------------------------------------------|
 | SSH keys           | `private_dot_ssh/` templates → 1Password `onepasswordRead`              |
 | Git config         | `dot_gitconfig.tmpl` → templated with name/email                        |
-| Shell config       | `dot_zshrc.tmpl`                                                        |
+| Shell config       | `dot_zshrc.tmpl` → zsh + starship + plugins + aliases                   |
+| Starship prompt    | `dot_config/starship.toml` → Nerd Font Symbols + nix shell detection    |
 | Doom Emacs config  | `dot_config/doom/`                                                      |
+| Emacs auth-source  | `private_dot_authinfo.tmpl` → GitHub PAT for magit/forge                |
 | Forge repo         | `.chezmoiexternal.toml` → `git clone` to `~/forge`                      |
-| Workspace dirs     | `run_once_create-workspace.sh` → `~/dev/{.worktrees,me,jmt,ref}`        |
-| Workspace justfile | `dev/justfile` → `~/dev/justfile` (worktree lifecycle commands)         |
-| Container justfile | `dot_homebase/justfile` → `~/.homebase/justfile` (Doom install, etc.)   |
+| Workspace justfile | `dev/justfile` → `~/dev/justfile` (worktree lifecycle commands)          |
+| Homebase justfile  | `dot_homebase/justfile` → `~/.homebase/justfile` (user commands)         |
+| GitHub CLI         | `dot_config/gh/config.yml` → aliases and settings                       |
 | AI tool configs    | `dot_claude/`, `dot_codex/`, `dot_gemini/` → settings (not credentials) |
 
 Externals (forge clone) run after file templates, so SSH keys are already on disk when the git clone happens.
@@ -144,24 +151,35 @@ Externals (forge clone) run after file templates, so SSH keys are already on dis
 ### Host (Layer 0)
 
 - [ ] `brew --version` works
+- [ ] `echo $SHELL` shows zsh
 - [ ] `op account list` shows your account
 - [ ] `ssh -T git@github.com` authenticates as `farra`
 - [ ] `ls -la ~/.ssh/id_rsa` shows permissions `600`
 - [ ] `git config user.name` returns your name
 - [ ] `chezmoi status` shows no pending changes
 - [ ] `~/forge/` exists and is a git repo
-- [ ] `~/dev/.worktrees/`, `~/dev/me/`, `~/dev/jmt/`, `~/dev/ref/` exist
-- [ ] `~/dev/justfile` exists (worktree commands)
+- [ ] `ls ~/.local/share/fonts/NerdFonts/` shows FiraCode and FiraMono files
+- [ ] `~/.homebase/justfile` exists
 
 ### Distrobox (Layer 1, Linux only)
 
 - [ ] `distrobox enter home` works
-- [ ] `which emacs rg fd fzf bat just direnv chezmoi` — all found
-- [ ] `emacs --version` runs (should include vterm support)
-- [ ] `cd ~/.homebase && just setup` — Doom installs successfully
+- [ ] `which emacs rg fd fzf bat just direnv chezmoi starship` — all found
+- [ ] `which nu` — nushell available
+- [ ] `emacs --version` runs
+- [ ] `starship --version` runs
+- [ ] `homebase setup` — workspace dirs + Doom + agents install
 - [ ] `doom doctor` — no critical issues
-- [ ] `just doom-export` — Emacs appears in desktop menu
+- [ ] `homebase doom-export` — Emacs appears in desktop menu
 - [ ] Doom Emacs loads without errors from missing `~/forge/` paths
+
+### Shell
+
+- [ ] Starship prompt shows git branch in a repo
+- [ ] `nix develop` inside a project shows nix indicator in prompt
+- [ ] Tab completion works (case-insensitive)
+- [ ] Typing shows autosuggestions (ghost text from history)
+- [ ] Invalid commands highlighted red, valid commands green
 
 ### Idempotency
 
@@ -170,9 +188,23 @@ Externals (forge clone) run after file templates, so SSH keys are already on dis
 
 ---
 
+## Updating
+
+After initial bootstrap, use the `homebase` alias:
+
+```bash
+homebase update             # Update everything (dotfiles + host tools + agents)
+homebase update-dotfiles    # Just dotfiles
+homebase update-host        # Just Homebrew
+homebase update-agents      # Just AI agents (claude, codex, gemini)
+homebase distrobox-rebuild  # Pull fresh image + recreate container
+```
+
+---
+
 ## Post-Bootstrap: Working with Worktrees
 
-After bootstrap, use the workspace justfile at `~/dev/justfile` to manage projects via git worktrees. Bare clones live hidden in `~/dev/.worktrees/`; working copies are checked out into group dirs where Emacs and agents operate.
+Use the workspace justfile at `~/dev/justfile` to manage projects via git worktrees. Bare clones live hidden in `~/dev/.worktrees/`; working copies are checked out into group dirs where Emacs and agents operate.
 
 ### First-time setup for a project
 
@@ -211,15 +243,6 @@ just wt-rm me/homebase-fix-auth   # removes worktree, keeps branch
 
 The branch and any pushed commits survive. The directory is disposable.
 
-### What's next
-
-The worktree justfile handles the git plumbing. The Emacs layer (elisp, likely `forge-agent-worktree.el`) will wrap this with:
-- `forge-agent-start` — prompts for project + task, creates worktree + persp workspace + agent session
-- `forge-agent-finish` — commits, pushes, cleans up worktree + workspace
-- `forge-agent-list` — dashboard of active agent worktrees and their status
-
-Forge stays a regular clone at `~/forge` — it doesn't follow the worktree pattern.
-
 ---
 
 ## Troubleshooting
@@ -250,8 +273,9 @@ chezmoi execute-template < ~/.local/share/chezmoi/private_dot_ssh/private_id_rsa
 
 If GHCR is unreachable or the image isn't published, build locally:
 ```bash
+cd ~/dev/homebase   # or wherever the repo is checked out
 just build-image
-distrobox create --image ghcr.io/farra/homebase:latest --name home
+homebase distrobox-create
 ```
 
 ### Forge clone fails during chezmoi apply
@@ -263,6 +287,14 @@ ssh -T git@github.com
 
 # Then re-apply
 chezmoi apply
+```
+
+### Starship prompt not showing
+
+```bash
+which starship           # Should be in ~/.nix-profile/bin/
+starship --version       # Verify it runs
+cat ~/.config/starship.toml   # Check config exists
 ```
 
 ---
@@ -280,11 +312,11 @@ git remote set-url origin git@github.com:farra/homebase.git
 
 ### Why the image is baked
 
-The old flow required `just bootstrap` inside the distrobox to install tools via `nix profile`. The new baked image has everything pre-installed — `distrobox enter home` gives you a fully equipped environment immediately.
+All tools are pre-installed via Nix in the container image. `distrobox enter home` gives you a fully equipped environment immediately — no bootstrap step inside the container. Only Doom Emacs and AI agents install into `$HOME` (via `homebase setup`) since they persist across container rebuilds.
 
 ### distrobox shares $HOME
 
-The `home` distrobox bind-mounts your real `$HOME`. Dotfiles applied by chezmoi on the host are visible inside the container. SSH keys, git config, and Doom Emacs config all work in both contexts.
+The `home` distrobox bind-mounts your real `$HOME`. Dotfiles applied by chezmoi on the host are visible inside the container. SSH keys, git config, fonts, and all configs work in both contexts.
 
 ### 1Password vault name
 
