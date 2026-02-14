@@ -32,8 +32,10 @@
           yq-go
           delta
 
-          # Editor
-          emacs
+          # Editor — Emacs with vterm native module for Doom Emacs
+          (emacs.pkgs.withPackages (epkgs: with epkgs; [
+            vterm
+          ]))
         ];
       in
       {

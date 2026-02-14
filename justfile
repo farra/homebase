@@ -36,6 +36,10 @@ push:
 doom-sync:
     ~/.emacs.d/bin/doom sync
 
+# Run container setup (Doom install, etc.)
+container-setup:
+    cd ~/.homebase && just setup
+
 # ── Image Building ───────────────────────────────────────────────────────────
 
 # Build the homebase OCI image

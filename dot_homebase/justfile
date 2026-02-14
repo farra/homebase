@@ -1,0 +1,57 @@
+# justfile - Post-bootstrap setup for inside a container
+#
+# Run these after entering a distrobox for the first time.
+# Lives at ~/.homebase/justfile, shared across all containers via $HOME.
+#
+# Usage:
+#   cd ~/.homebase && just setup     # full first-time setup
+#   cd ~/.homebase && just doom-sync # after config changes
+
+default:
+    @just --list
+
+# ── First-Time Setup ─────────────────────────────────────────────────────────
+
+# Full first-time setup (run once after entering a new container)
+setup: doom-install
+    @echo ""
+    @echo "Setup complete. Run 'doom sync' after any config changes."
+
+# ── Doom Emacs ───────────────────────────────────────────────────────────────
+
+# Install Doom Emacs (clone + install)
+doom-install:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ -d "$HOME/.emacs.d/bin" ]]; then
+        echo "Doom Emacs already installed at ~/.emacs.d"
+        echo "Run 'just doom-reinstall' to force reinstall"
+        exit 0
+    fi
+    # Back up any existing .emacs.d
+    if [[ -d "$HOME/.emacs.d" ]]; then
+        echo "Backing up existing ~/.emacs.d to ~/.emacs.d.bak"
+        mv "$HOME/.emacs.d" "$HOME/.emacs.d.bak"
+    fi
+    echo "Cloning Doom Emacs..."
+    git clone --depth 1 https://github.com/doomemacs/doomemacs "$HOME/.emacs.d"
+    echo "Running doom install..."
+    "$HOME/.emacs.d/bin/doom" install
+    echo "Doom Emacs installed. Config at ~/.config/doom/ (managed by chezmoi)"
+
+# Reinstall Doom Emacs from scratch
+doom-reinstall:
+    rm -rf "$HOME/.emacs.d"
+    just doom-install
+
+# Sync Doom Emacs (after config changes)
+doom-sync:
+    ~/.emacs.d/bin/doom sync
+
+# Run Doom doctor
+doom-doctor:
+    ~/.emacs.d/bin/doom doctor
+
+# Export Emacs to host desktop (distrobox only)
+doom-export:
+    distrobox-export --app emacs 2>/dev/null || echo "Not in a distrobox?"

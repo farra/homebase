@@ -53,8 +53,11 @@ The script runs 5 idempotent phases, each guarded by a stamp file in `~/.homebas
 # Enter the dev environment (all tools pre-installed)
 distrobox enter home
 
+# First-time container setup (installs Doom Emacs)
+cd ~/.homebase && just setup
+
 # Export Emacs to the KDE desktop
-distrobox-export --app emacs
+just doom-export
 
 # Verify tools
 which emacs rg fd fzf bat just direnv chezmoi
@@ -129,6 +132,8 @@ A single `chezmoi apply` handles:
 | Forge repo | `.chezmoiexternal.toml` → `git clone` to `~/forge` |
 | Workspace dirs | `run_once_create-workspace.sh` → `~/dev/{.worktrees,me,jmt,ref}` |
 | Workspace justfile | `dev/justfile` → `~/dev/justfile` (worktree lifecycle commands) |
+| Container justfile | `dot_homebase/justfile` → `~/.homebase/justfile` (Doom install, etc.) |
+| AI tool configs | `dot_claude/`, `dot_codex/`, `dot_gemini/` → settings (not credentials) |
 
 Externals (forge clone) run after file templates, so SSH keys are already on disk when the git clone happens.
 
@@ -152,8 +157,10 @@ Externals (forge clone) run after file templates, so SSH keys are already on dis
 
 - [ ] `distrobox enter home` works
 - [ ] `which emacs rg fd fzf bat just direnv chezmoi` — all found
-- [ ] `emacs --version` runs
-- [ ] `distrobox-export --app emacs` — Emacs appears in desktop menu
+- [ ] `emacs --version` runs (should include vterm support)
+- [ ] `cd ~/.homebase && just setup` — Doom installs successfully
+- [ ] `doom doctor` — no critical issues
+- [ ] `just doom-export` — Emacs appears in desktop menu
 - [ ] Doom Emacs loads without errors from missing `~/forge/` paths
 
 ### Idempotency
@@ -290,4 +297,3 @@ The `home` distrobox bind-mounts your real `$HOME`. Dotfiles applied by chezmoi 
 - [ ] **1Password CLI via Homebrew on Linux** — `brew install 1password-cli` needs verification. Fallback: direct binary download to `~/.local/bin/`
 - [ ] **GHCR package visibility** — Private repo defaults to private packages. May need `podman login` (which the bootstrap script does) or package visibility settings in GitHub
 - [ ] **Nothing tested on clean machines** — Full flow is untested on fresh Bazzite, WSL, or macOS
-- [ ] **Doom Emacs install is manual** — Doom itself requires `doom install`; config is managed by chezmoi but the editor isn't bootstrapped automatically
