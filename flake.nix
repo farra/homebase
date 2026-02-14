@@ -48,6 +48,8 @@
           shellcheck
           tmux
           nushell
+          zsh-autosuggestions
+          zsh-syntax-highlighting
 
           # System essentials
           curl

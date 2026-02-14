@@ -6,11 +6,11 @@ Canonical walkthrough for bootstrapping a new machine with homebase.
 
 1. **1Password account** with these items in your **Private** vault:
 
-   | Item | Field | Purpose |
-   |------|-------|---------|
-   | `cautamaton-ssh-key` | `private key` | SSH private key |
-   | `cautamaton-ssh-key` | `public key` | SSH public key |
-   | `github-pat` | `credential` | GitHub PAT with `repo` + `read:packages` scopes |
+   | Item                 | Field         | Purpose                                         |
+   |----------------------|---------------|-------------------------------------------------|
+   | `cautamaton-ssh-key` | `private key` | SSH private key                                 |
+   | `cautamaton-ssh-key` | `public key`  | SSH public key                                  |
+   | `github-pat`         | `credential`  | GitHub PAT with `repo` + `read:packages` scopes |
 
 2. **Network access** to GitHub, Homebrew, and 1Password
 
@@ -123,17 +123,17 @@ Same flow as Bazzite. When ready, the `bazzite.sh` script should work on WSL Fed
 
 A single `chezmoi apply` handles:
 
-| What | How |
-|------|-----|
-| SSH keys | `private_dot_ssh/` templates → 1Password `onepasswordRead` |
-| Git config | `dot_gitconfig.tmpl` → templated with name/email |
-| Shell config | `dot_zshrc.tmpl` |
-| Doom Emacs config | `dot_config/doom/` |
-| Forge repo | `.chezmoiexternal.toml` → `git clone` to `~/forge` |
-| Workspace dirs | `run_once_create-workspace.sh` → `~/dev/{.worktrees,me,jmt,ref}` |
-| Workspace justfile | `dev/justfile` → `~/dev/justfile` (worktree lifecycle commands) |
-| Container justfile | `dot_homebase/justfile` → `~/.homebase/justfile` (Doom install, etc.) |
-| AI tool configs | `dot_claude/`, `dot_codex/`, `dot_gemini/` → settings (not credentials) |
+| What               | How                                                                     |
+|--------------------|-------------------------------------------------------------------------|
+| SSH keys           | `private_dot_ssh/` templates → 1Password `onepasswordRead`              |
+| Git config         | `dot_gitconfig.tmpl` → templated with name/email                        |
+| Shell config       | `dot_zshrc.tmpl`                                                        |
+| Doom Emacs config  | `dot_config/doom/`                                                      |
+| Forge repo         | `.chezmoiexternal.toml` → `git clone` to `~/forge`                      |
+| Workspace dirs     | `run_once_create-workspace.sh` → `~/dev/{.worktrees,me,jmt,ref}`        |
+| Workspace justfile | `dev/justfile` → `~/dev/justfile` (worktree lifecycle commands)         |
+| Container justfile | `dot_homebase/justfile` → `~/.homebase/justfile` (Doom install, etc.)   |
+| AI tool configs    | `dot_claude/`, `dot_codex/`, `dot_gemini/` → settings (not credentials) |
 
 Externals (forge clone) run after file templates, so SSH keys are already on disk when the git clone happens.
 

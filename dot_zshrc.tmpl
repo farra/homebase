@@ -47,49 +47,53 @@ export PATH="$HOME/.local/bin:$PATH"
 export PATH="$HOME/.nix-profile/bin:$PATH"
 
 # =============================================================================
-# direnv
+# Zsh options
 # =============================================================================
-if command -v direnv &> /dev/null; then
-    eval "$(direnv hook zsh)"
-fi
+# Directory navigation
+setopt AUTO_CD              # cd by typing directory name
+setopt AUTO_PUSHD           # push directories onto stack
+setopt PUSHD_IGNORE_DUPS    # no duplicate dirs on stack
+setopt PUSHD_SILENT         # don't print stack after pushd/popd
+
+# Globbing
+setopt EXTENDED_GLOB        # extended glob patterns (#, ~, ^)
+setopt GLOB_DOTS            # include dotfiles in glob results
+
+# Misc
+setopt INTERACTIVE_COMMENTS # allow comments in interactive shell
+setopt NO_BEEP              # silence
 
 # =============================================================================
-# zoxide (smart cd)
+# Completion
 # =============================================================================
-if command -v zoxide &> /dev/null; then
-    eval "$(zoxide init zsh)"
-fi
+autoload -Uz compinit
+compinit -d ~/.zcompdump
+
+# Case-insensitive, partial-word, then substring completion
+zstyle ':completion:*' matcher-list 'm:{a-zA-Z}={A-Za-z}' 'r:|[._-]=* r:|=*' 'l:|=* r:|=*'
+
+# Menu selection on tab
+zstyle ':completion:*' menu select
+
+# Group completions by category
+zstyle ':completion:*' group-name ''
+zstyle ':completion:*:descriptions' format '%F{yellow}── %d ──%f'
+
+# Colors in completion menu (match ls colors)
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 
 # =============================================================================
-# atuin (shell history sync)
+# History
 # =============================================================================
-if command -v atuin &> /dev/null; then
-    eval "$(atuin init zsh)"
-fi
-
-# =============================================================================
-# Aliases
-# =============================================================================
-# Modern replacements
-if command -v eza &> /dev/null; then
-    alias ls='eza'
-    alias ll='eza -la'
-    alias la='eza -a'
-    alias lt='eza --tree'
-fi
-
-if command -v bat &> /dev/null; then
-    alias cat='bat --paging=never'
-fi
-
-# Git shortcuts
-alias gs='git status'
-alias gd='git diff'
-alias gl='git log --oneline -20'
-alias gp='git push'
-
-# Forge
-alias forge='cd ~/forge'
+HISTSIZE=50000
+SAVEHIST=50000
+HISTFILE=~/.zsh_history
+setopt SHARE_HISTORY
+setopt HIST_IGNORE_DUPS
+setopt HIST_IGNORE_ALL_DUPS
+setopt HIST_IGNORE_SPACE
+setopt HIST_REDUCE_BLANKS
+setopt HIST_VERIFY          # show expanded history before executing
 
 # =============================================================================
 # Editor
@@ -98,14 +102,112 @@ export EDITOR="emacs"
 export VISUAL="emacs"
 
 # =============================================================================
-# History
+# Tool integrations
 # =============================================================================
-HISTSIZE=10000
-SAVEHIST=10000
-HISTFILE=~/.zsh_history
-setopt SHARE_HISTORY
-setopt HIST_IGNORE_DUPS
-setopt HIST_IGNORE_SPACE
+# direnv
+if command -v direnv &> /dev/null; then
+    eval "$(direnv hook zsh)"
+fi
+
+# zoxide (smart cd — use z instead of cd)
+if command -v zoxide &> /dev/null; then
+    eval "$(zoxide init zsh)"
+fi
+
+# atuin (shell history sync — replaces Ctrl-R)
+if command -v atuin &> /dev/null; then
+    eval "$(atuin init zsh)"
+fi
+
+# fzf (fuzzy finder — Ctrl-T for files, Alt-C for cd)
+if [ -f "$HOME/.nix-profile/share/fzf/key-bindings.zsh" ]; then
+    source "$HOME/.nix-profile/share/fzf/key-bindings.zsh"
+    source "$HOME/.nix-profile/share/fzf/completion.zsh"
+elif [ -f "/usr/share/fzf/shell/key-bindings.zsh" ]; then
+    source "/usr/share/fzf/shell/key-bindings.zsh"
+fi
+
+# fzf defaults: use fd if available, show hidden files
+if command -v fd &> /dev/null; then
+    export FZF_DEFAULT_COMMAND='fd --type f --hidden --exclude .git'
+    export FZF_CTRL_T_COMMAND="$FZF_DEFAULT_COMMAND"
+    export FZF_ALT_C_COMMAND='fd --type d --hidden --exclude .git'
+fi
+
+# =============================================================================
+# Zsh plugins (installed via Nix)
+# =============================================================================
+# Autosuggestions — ghost-text from history as you type
+if [ -f "$HOME/.nix-profile/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh" ]; then
+    source "$HOME/.nix-profile/share/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh"
+fi
+
+# Syntax highlighting — colors commands green/red as you type
+# Must be sourced LAST (after all widgets are defined)
+_source_zsh_syntax_highlighting() {
+    if [ -f "$HOME/.nix-profile/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh" ]; then
+        source "$HOME/.nix-profile/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh"
+    fi
+}
+
+# =============================================================================
+# Aliases
+# =============================================================================
+# Modern CLI replacements (guarded — fall back to originals if not installed)
+if command -v eza &> /dev/null; then
+    alias ls='eza'
+    alias ll='eza -la --git'
+    alias la='eza -a'
+    alias lt='eza --tree --level=2'
+fi
+
+if command -v bat &> /dev/null; then
+    alias cat='bat --paging=never'
+    alias less='bat --paging=always'
+fi
+
+if command -v delta &> /dev/null; then
+    alias diff='delta'
+fi
+
+if command -v btm &> /dev/null; then
+    alias top='btm'
+fi
+
+# Git shortcuts
+alias gs='git status'
+alias gd='git diff'
+alias gds='git diff --staged'
+alias gl='git log --oneline -20'
+alias gla='git log --oneline --all --graph -20'
+alias gp='git push'
+alias ga='git add'
+alias gc='git commit'
+alias gco='git checkout'
+alias gb='git branch'
+alias gw='git worktree'
+alias gwl='git worktree list'
+
+# Lazygit
+if command -v lazygit &> /dev/null; then
+    alias lg='lazygit'
+fi
+
+# Quick help via tealdeer
+if command -v tldr &> /dev/null; then
+    alias help='tldr'
+fi
+
+# Markdown preview
+if command -v glow &> /dev/null; then
+    alias md='glow'
+fi
+
+# Forge
+alias forge='cd ~/forge'
+
+# Homebase setup
+alias homebase='cd ~/.homebase && just'
 
 # =============================================================================
 # Prompt (starship)
@@ -115,3 +217,8 @@ if command -v starship &> /dev/null; then
 else
     PROMPT='%F{blue}%~%f %# '
 fi
+
+# =============================================================================
+# Syntax highlighting (must be last)
+# =============================================================================
+_source_zsh_syntax_highlighting
