@@ -240,7 +240,7 @@ install-codex:
         exit 0
     fi
     echo "Installing Codex CLI..."
-    npm install -g @openai/codex
+    brew install codex
     echo "Codex CLI installed"
 
 # Install Gemini CLI
@@ -253,7 +253,7 @@ install-gemini:
         exit 0
     fi
     echo "Installing Gemini CLI..."
-    curl -fsSL https://raw.githubusercontent.com/google-gemini/gemini-cli/main/install.sh | bash
+    brew install gemini-cli
     echo "Gemini CLI installed"
 
 # Update all AI agent CLIs
@@ -265,8 +265,8 @@ update-claude:
 
 # Update Codex CLI
 update-codex:
-    npm install -g @openai/codex
+    brew upgrade codex || brew install codex
 
 # Update Gemini CLI
 update-gemini:
-    curl -fsSL https://raw.githubusercontent.com/google-gemini/gemini-cli/main/install.sh | bash
+    brew upgrade gemini-cli || brew install gemini-cli
