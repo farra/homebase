@@ -47,6 +47,7 @@
           atuin
           shellcheck
           tmux
+          nushell
 
           # System essentials
           curl
