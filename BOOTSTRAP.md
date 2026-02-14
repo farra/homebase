@@ -162,7 +162,7 @@ Externals (forge clone) run after file templates, so SSH keys are already on dis
 - [ ] `echo $SHELL` shows zsh
 - [ ] `op account list` shows your account
 - [ ] `ssh -T git@github.com` authenticates as `farra`
-- [ ] `ls -la ~/.ssh/id_rsa` shows permissions `600`
+- [ ] `ls -la ~/.ssh/id_ed25519` shows permissions `600`
 - [ ] `git config user.name` returns your name
 - [ ] `gpg --list-secret-keys` shows the homebase key
 - [ ] `ls -la ~/.authinfo.gpg` exists (GPG-encrypted)
@@ -266,14 +266,14 @@ eval "$(op signin)"      # Re-authenticate
 chezmoi sets these automatically, but verify:
 ```bash
 ls -la ~/.ssh/
-# id_rsa should be 600, id_rsa.pub should be 644
+# id_ed25519 should be 600, id_ed25519.pub should be 644
 ```
 
 ### chezmoi template errors
 
 ```bash
 chezmoi diff             # Preview what chezmoi will do
-chezmoi execute-template < ~/.local/share/chezmoi/private_dot_ssh/private_id_rsa.tmpl
+chezmoi execute-template < ~/.local/share/chezmoi/private_dot_ssh/private_id_ed25519.tmpl
 ```
 
 ### Distrobox image pull fails
