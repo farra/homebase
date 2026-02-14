@@ -81,11 +81,18 @@ else
     # Set zsh as default shell (distrobox inherits host $SHELL)
     if [[ "$SHELL" != *zsh ]]; then
         ZSH_PATH="$(command -v zsh)"
+        # Add to /etc/shells if possible (may fail on immutable OS)
         if [[ -f /etc/shells ]]; then
             grep -qxF "$ZSH_PATH" /etc/shells 2>/dev/null || \
                 (echo "$ZSH_PATH" | sudo tee -a /etc/shells 2>/dev/null || true)
         fi
-        chsh -s "$ZSH_PATH" || warn "chsh failed — set shell manually: chsh -s $ZSH_PATH"
+        # Try chsh first, fall back to usermod (Bazzite lacks chsh)
+        if command -v chsh &>/dev/null; then
+            chsh -s "$ZSH_PATH" || warn "chsh failed"
+        else
+            sudo usermod -s "$ZSH_PATH" "$USER" || warn "usermod failed"
+        fi
+        ok "Default shell set to $ZSH_PATH (log out and back in to take effect)"
     fi
     stamp_done "02-host-tools"
     ok "Host tools installed"
