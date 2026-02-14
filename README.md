@@ -1,38 +1,46 @@
 # Homebase
 
-Machine substrate for consistent development environments across macOS, Bazzite Linux, and WSL.
+Hello, I'm [J. Aaron Farr](https://github.com/farra). This is my homebase.
 
-Git worktrees and nix develop subshells provide per-agent workspace isolation and per-project toolchains.
+I bounce around a lot, between machines, between operating systems (mac, linux, wsl). I've spent years accumulating dotfiles, shell tweaks, and editor configs along with various scripts to quickly provision a new machine. I tried `nix home manager` and several other approaches. **Homebase** is my attempt to level this up into something repeatable and modern.
 
-**Status:** Implementation
-**Repo:** `farra/homebase` (private)
+Homebase uses a layered approach (see below). The core is the host configuration, primarily with Homebrew (its one few package managers that really does live everywhere). From there, we leverage a potent mix of `chezmoi`, `nix`, `direnv`, `distrobox` to create a consistent home development environment. The final layer is [cautomaton-develops](https://github.com/farra/cautomaton-develops), a nix based system for managing project-level dependencies. It's my own take on `devbox` or similar systems. It also pairs with [agentboxes](https://github.com/farra/agentboxes), an experiment I'm running to manage AI agents and orchestrators in containers and distroboxes.
+
+I'm also stealing a git worktree idea of [schmux](https://github.com/sergeknystautas/schmux) for my local `~/dev` directory, allowing for faster checkouts of branches. 
+
+The heart of everything is still (doom) emacs. It's ultimately where I live. 
+
+The philosophy here is clear layers, clear isolation, and secure repeatabilty. It may seem like a lot, but this keeps me sane when I'm quickly moving between different projects, testing out ideas, and doing so in a way that doesn't clutter up my machine. 
+
+This repo is my personal config — it's not designed to be plug-and-play for someone else. But if you're interested in the patterns (immutable Linux + distrobox, chezmoi + 1Password, worktree-per-agent workflows), feel free to poke around and steal ideas.
 
 ## Architecture
 
 ```
 Layer 0: Host (OS-specific bootstrap)
 ├── Bazzite:  Homebrew → chezmoi, just, direnv, zsh, 1password-cli
-├── WSL:      (future, same pattern)
-└── macOS:    (future, Homebrew + nix native)
+├── macOS:    Homebrew + Nix (native, no container)
+└── WSL:      (future, same pattern as Bazzite)
 
-Layer 1: Homebase distrobox (baked image via Nix flake)
+Layer 1: Dev environment (baked OCI image via Nix flake)
 ├── All dev tools pre-installed (ripgrep, fd, fzf, bat, eza, starship, etc.)
-├── Emacs with vterm (exported to host desktop)
+├── Doom Emacs with vterm (exported to host desktop on Linux)
 ├── Fedora toolbox base (distrobox-compatible)
 └── $HOME shared with host (chezmoi dotfiles visible in both)
 
-Layer 2: Per-project nix flakes (cautomaton-develops, out of scope)
+Layer 2: Per-project toolchains (cautomaton-develops, separate repo)
+└── Nix flakes per project, activated via direnv
 ```
 
 ## Prerequisites
 
 You need these items in your 1Password **Private** vault:
 
-| Item | Field/Files | Purpose |
-|------|-------------|---------|
-| `cautamaton-ssh-key` | `private key`, `public key` | SSH key pair |
-| `github-pat` | `credential` | GitHub PAT with `repo` + `read:packages` scopes |
-| `cautomaton-homebase-gpg` | `public.asc`, `secret.asc` | GPG key for encrypting `~/.authinfo.gpg` |
+| Item                      | Field/Files                 | Purpose                                         |
+|---------------------------|-----------------------------|-------------------------------------------------|
+| `cautamaton-ssh-key`      | `private key`, `public key` | SSH key pair                                    |
+| `github-pat`              | `credential`                | GitHub PAT with `repo` + `read:packages` scopes |
+| `cautomaton-homebase-gpg` | `public.asc`, `secret.asc`  | GPG key for encrypting `~/.authinfo.gpg`        |
 
 ## Quick Start
 
