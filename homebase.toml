@@ -25,8 +25,12 @@ tools = [
   "jq",
   "yq",
   "delta",
-  "emacs",
+  "gh",
+  "oh-my-posh",
+  "emacs",  # with vterm via emacsWithPackages
 ]
+# AI agents installed separately via ~/.homebase/justfile (not baked):
+# claude-code, codex, gemini-cli
 
 [macos]
 # Homebrew casks (GUI apps, macOS only)

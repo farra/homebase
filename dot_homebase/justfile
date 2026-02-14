@@ -4,8 +4,9 @@
 # Lives at ~/.homebase/justfile, shared across all containers via $HOME.
 #
 # Usage:
-#   cd ~/.homebase && just setup     # full first-time setup
-#   cd ~/.homebase && just doom-sync # after config changes
+#   cd ~/.homebase && just setup         # full first-time setup
+#   cd ~/.homebase && just doom-sync     # after config changes
+#   cd ~/.homebase && just update-agents # update AI tools
 
 default:
     @just --list
@@ -13,9 +14,11 @@ default:
 # ── First-Time Setup ─────────────────────────────────────────────────────────
 
 # Full first-time setup (run once after entering a new container)
-setup: doom-install
+setup: doom-install install-agents
     @echo ""
-    @echo "Setup complete. Run 'doom sync' after any config changes."
+    @echo "Setup complete!"
+    @echo "  - Doom Emacs installed (run 'doom sync' after config changes)"
+    @echo "  - AI agents installed (claude, codex, gemini)"
 
 # ── Doom Emacs ───────────────────────────────────────────────────────────────
 
@@ -55,3 +58,62 @@ doom-doctor:
 # Export Emacs to host desktop (distrobox only)
 doom-export:
     distrobox-export --app emacs 2>/dev/null || echo "Not in a distrobox?"
+
+# ── AI Agents ────────────────────────────────────────────────────────────────
+
+# Install all AI agent CLIs
+install-agents: install-claude install-codex install-gemini
+
+# Install Claude Code
+install-claude:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if command -v claude &>/dev/null; then
+        echo "Claude Code already installed: $(claude --version 2>/dev/null || echo 'unknown version')"
+        echo "Run 'just update-claude' to update"
+        exit 0
+    fi
+    echo "Installing Claude Code..."
+    curl -fsSL https://claude.ai/install.sh | bash
+    echo "Claude Code installed"
+
+# Install Codex CLI
+install-codex:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if command -v codex &>/dev/null; then
+        echo "Codex already installed: $(codex --version 2>/dev/null || echo 'unknown version')"
+        echo "Run 'just update-codex' to update"
+        exit 0
+    fi
+    echo "Installing Codex CLI..."
+    curl -fsSL https://raw.githubusercontent.com/openai/codex/main/install.sh | bash
+    echo "Codex CLI installed"
+
+# Install Gemini CLI
+install-gemini:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if command -v gemini &>/dev/null; then
+        echo "Gemini CLI already installed: $(gemini --version 2>/dev/null || echo 'unknown version')"
+        echo "Run 'just update-gemini' to update"
+        exit 0
+    fi
+    echo "Installing Gemini CLI..."
+    curl -fsSL https://raw.githubusercontent.com/google-gemini/gemini-cli/main/install.sh | bash
+    echo "Gemini CLI installed"
+
+# Update all AI agent CLIs
+update-agents: update-claude update-codex update-gemini
+
+# Update Claude Code
+update-claude:
+    curl -fsSL https://claude.ai/install.sh | bash
+
+# Update Codex CLI
+update-codex:
+    curl -fsSL https://raw.githubusercontent.com/openai/codex/main/install.sh | bash
+
+# Update Gemini CLI
+update-gemini:
+    curl -fsSL https://raw.githubusercontent.com/google-gemini/gemini-cli/main/install.sh | bash

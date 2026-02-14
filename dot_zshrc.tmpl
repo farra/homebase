@@ -94,6 +94,10 @@ setopt HIST_IGNORE_DUPS
 setopt HIST_IGNORE_SPACE
 
 # =============================================================================
-# Prompt (simple default - override with starship/oh-my-posh if installed)
+# Prompt (oh-my-posh with quick-term theme)
 # =============================================================================
-PROMPT='%F{blue}%~%f %# '
+if command -v oh-my-posh &> /dev/null; then
+    eval "$(oh-my-posh init zsh --config "$(oh-my-posh get themes-path)/quick-term.omp.json")"
+else
+    PROMPT='%F{blue}%~%f %# '
+fi
