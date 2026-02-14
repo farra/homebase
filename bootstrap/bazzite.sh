@@ -180,10 +180,10 @@ else
     ok "Chezmoi remote switched to SSH (future updates use SSH key)"
 
     # Verify SSH key landed
-    if [[ -f "$HOME/.ssh/id_rsa" ]]; then
+    if [[ -f "$HOME/.ssh/id_ed25519" ]]; then
         ok "SSH private key installed"
     else
-        warn "~/.ssh/id_rsa not found after chezmoi apply"
+        warn "~/.ssh/id_ed25519 not found after chezmoi apply"
     fi
 
     stamp_done "05-dotfiles"
