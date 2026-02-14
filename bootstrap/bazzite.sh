@@ -135,6 +135,10 @@ else
     # Retrieve GitHub PAT from 1Password
     GITHUB_PAT="$(op item get "github-pat" --fields label="credential")"
 
+    # Pre-populate known_hosts so chezmoi externals (forge clone via SSH) don't hang
+    mkdir -p "$HOME/.ssh"
+    ssh-keyscan github.com >> "$HOME/.ssh/known_hosts" 2>/dev/null
+
     # chezmoi init with HTTPS URL (private repo, no SSH needed yet)
     # Use GIT_ASKPASS to avoid PAT appearing in process args
     export GIT_ASKPASS="$(mktemp)"
