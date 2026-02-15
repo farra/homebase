@@ -8,7 +8,7 @@ Homebase provides a machine substrate for consistent development environments ac
 
 **Owner:** J. Aaron Farr (farra)
 
-**Repo:** `farra/homebase` (private, GitHub)
+**Repo:** `farra/homebase` (public, GitHub)
 
 ## Goals
 
