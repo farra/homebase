@@ -164,6 +164,21 @@ info "Phase 5: Dotfiles via chezmoi"
 if stamp_check "05-dotfiles"; then
     skip "Dotfiles already applied"
 else
+    # Pre-create chezmoi config so promptStringOnce variables are already set
+    # (avoids interactive prompts during chezmoi init)
+    CHEZMOI_CONFIG_DIR="$HOME/.config/chezmoi"
+    mkdir -p "$CHEZMOI_CONFIG_DIR"
+    if [[ ! -f "$CHEZMOI_CONFIG_DIR/chezmoi.toml" ]]; then
+        cat > "$CHEZMOI_CONFIG_DIR/chezmoi.toml" <<TOML
+[data]
+    op_ssh_key = "$OP_SSH_KEY"
+    op_github_pat = "$OP_GITHUB_PAT"
+    op_gpg_key = "$OP_GPG_KEY"
+    gpg_key_fingerprint = "$GPG_KEY_FPR"
+TOML
+        ok "Pre-seeded chezmoi config with 1Password item names"
+    fi
+
     # Retrieve GitHub PAT from 1Password
     GITHUB_PAT="$(op read "op://Private/${OP_GITHUB_PAT}/credential")"
 
