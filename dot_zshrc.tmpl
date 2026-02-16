@@ -25,6 +25,10 @@ fi
 if [ -e /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh ]; then
     . /nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh
 fi
+# Inside distrobox: Nix daemon runs as root, user talks to it via socket
+if [ -f /run/.containerenv ]; then
+    export NIX_REMOTE=daemon
+fi
 
 # =============================================================================
 # SSH Agent

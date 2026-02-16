@@ -8,6 +8,13 @@
 
 if [[ -f /run/.containerenv ]]; then
 
+    # Start Nix daemon if not running (installed with --init none in container image)
+    if [[ -x /nix/var/nix/profiles/default/bin/nix-daemon ]] && \
+       ! pgrep -x nix-daemon &>/dev/null; then
+        sudo /nix/var/nix/profiles/default/bin/nix-daemon --daemon &>/dev/null &
+        disown
+    fi
+
     # chezmoi sync status
     if command -v chezmoi &>/dev/null; then
         _status=$(chezmoi status 2>/dev/null)
