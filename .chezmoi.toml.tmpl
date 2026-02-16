@@ -9,3 +9,6 @@
     op_github_pat = {{ promptStringOnce . "op_github_pat" "1Password GitHub PAT item name" | quote }}
     op_gpg_key = {{ promptStringOnce . "op_gpg_key" "1Password GPG key item name" | quote }}
     gpg_key_fingerprint = {{ promptStringOnce . "gpg_key_fingerprint" "GPG key fingerprint for authinfo encryption" | quote }}
+
+[status]
+    exclude = ["scripts"]

@@ -1,5 +1,5 @@
 # SSH Configuration
-# Note: SSH keys are retrieved from 1Password during chezmoi apply
+# Note: SSH keys are installed from 1Password via run_once script (first apply only)
 
 Host github.com
     HostName github.com

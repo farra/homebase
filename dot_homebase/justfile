@@ -15,6 +15,19 @@ runtime := `command -v podman 2>/dev/null || command -v docker 2>/dev/null || ec
 default:
     @just --list
 
+# ── Authentication ───────────────────────────────────────────────────────
+
+# Sign in to 1Password (required for chezmoi secrets: SSH keys, GPG, authinfo)
+auth:
+    #!/usr/bin/env bash
+    if op whoami &>/dev/null 2>&1; then
+        echo "Already signed in to 1Password as: $(op whoami 2>/dev/null | head -1)"
+    else
+        echo "Signing in to 1Password..."
+        eval "$(op signin)"
+        echo "1Password session active."
+    fi
+
 # ── First-Time Setup ─────────────────────────────────────────────────────
 
 # Full first-time setup

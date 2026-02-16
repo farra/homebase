@@ -15,9 +15,9 @@ if [[ -f /run/.containerenv ]]; then
         disown
     fi
 
-    # chezmoi sync status
+    # chezmoi sync status (exclude scripts to avoid 1Password auth requirement)
     if command -v chezmoi &>/dev/null; then
-        _status=$(chezmoi status 2>/dev/null)
+        _status=$(chezmoi status --exclude=scripts 2>/dev/null)
         if [[ -n "$_status" ]]; then
             echo "chezmoi: files out of sync"
             echo "$_status" | head -5

@@ -195,6 +195,7 @@ When helping with this project:
 3. **Consider all platforms** — Changes should work on macOS, Bazzite, and WSL
 4. **Respect immutability** — Don't assume root access or system-level changes on Bazzite
 5. **Use the right justfile** — Project dev commands in `./justfile`, user-facing commands in `dot_homebase/justfile`
+6. **Be greedy with chezmoi** — Default to managing config files in chezmoi, not ignoring them. The goal is full environment replication across workstations. When a file has machine-specific values, use chezmoi templates to make it portable rather than excluding it via `.chezmoiignore`.
 
 ### Common Tasks
 
