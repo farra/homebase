@@ -288,13 +288,17 @@ box action profile="base" name="":
 
     _box_create() {
         local image_ref="$1" box_name="$2"
-        local volume_flags=""
+        local extra_flags=""
         if [[ -d "/home/linuxbrew" ]]; then
-            volume_flags="--volume /home/linuxbrew:/home/linuxbrew"
+            extra_flags+=" --volume /home/linuxbrew:/home/linuxbrew"
+        fi
+        # Bind-mount NVIDIA drivers into container if present on host
+        if [[ -e /dev/nvidia0 ]]; then
+            extra_flags+=" --nvidia"
         fi
         distrobox create --image "$image_ref" --name "$box_name" \
             --init-hooks 'usermod -s /usr/bin/zsh "$(whoami)"' \
-            $volume_flags
+            $extra_flags
         # Run init to completion before first enter (works around distrobox
         # log-tailing race where enter hangs or the container exits with code 1)
         echo "Initializing container '$box_name'..."
