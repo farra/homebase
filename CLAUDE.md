@@ -70,7 +70,7 @@ Layer 2: Per-project nix flakes (cautomaton-develops, out of scope)
 | `homebase.toml` | Single source of truth for tool definitions |
 | `flake.nix` | Nix flake defining all container tools |
 | `images/Containerfile` | Baked distrobox image (fedora-toolbox base + Nix) |
-| `bootstrap/bazzite.sh` | Layer 0 bootstrap (7 idempotent phases) |
+| `bootstrap/bazzite.sh` | Layer 0 bootstrap (9 idempotent phases) |
 | `Brewfile` | Host-only tools (Homebrew) |
 | `justfile` | Project development commands (image build, flake check) |
 | `dot_homebase/justfile` | User commands (setup, updates, worktrees, distrobox lifecycle) |
@@ -85,6 +85,7 @@ Layer 2: Per-project nix flakes (cautomaton-develops, out of scope)
 | `.chezmoi.toml.tmpl` | chezmoi config with user data |
 | `.chezmoiexternal.toml` | External repos (forge clone) |
 | `.chezmoiignore` | Files excluded from chezmoi apply |
+| `scripts/parse-toml-array.sh` | Pure-bash TOML array parser (used by flatpak recipes + bootstrap) |
 | `secretspec.toml` | Runtime secrets declaration |
 | `DECISIONS.md` | Design decisions and rationale |
 | `.github/workflows/build-image.yml` | CI to build and push OCI image |
@@ -106,6 +107,9 @@ nerd-fonts = ["FiraCode", "FiraMono"]
 [macos]       # Homebrew casks (macOS only)
 casks = ["emacs", "1password-cli", "font-fira-code-nerd-font", "font-fira-mono-nerd-font"]
 
+[flatpaks]    # Host-level desktop apps via Flatpak (Flathub, Bazzite/Linux)
+apps = ["md.obsidian.Obsidian", "com.discordapp.Discord", ...]
+
 [workspace]   # Directory layout docs
 ```
 
@@ -118,7 +122,7 @@ casks = ["emacs", "1password-cli", "font-fira-code-nerd-font", "font-fira-mono-n
 
 ### Bazzite (scripted)
 
-`bootstrap/bazzite.sh` runs 7 idempotent phases (stamp files in `~/.homebase-bootstrap/`):
+`bootstrap/bazzite.sh` runs 9 idempotent phases (stamp files in `~/.homebase-bootstrap/`):
 
 1. Install Homebrew (to `~/.linuxbrew`, no root)
 2. Install host tools + set zsh as default shell
@@ -127,6 +131,8 @@ casks = ["emacs", "1password-cli", "font-fira-code-nerd-font", "font-fira-mono-n
 5. Apply dotfiles (`chezmoi init --apply` with PAT-embedded HTTPS URL)
 6. Install Nerd Fonts (FiraCode, FiraMono to `~/.local/share/fonts/`)
 7. Create distrobox (podman login to GHCR, pull image, `distrobox create`)
+8. Enable Tailscale daemon
+9. Install Flatpak apps from `homebase.toml` `[flatpaks]` section
 
 SSH keys are *output* of chezmoi apply (from 1Password templates), not a prerequisite. This solves the bootstrap paradox.
 
@@ -208,6 +214,10 @@ When helping with this project:
 **Add a host-only tool:**
 1. Add to `homebase.toml` `[host]` tools
 2. Add to `Brewfile`
+
+**Add a new Flatpak app:**
+1. Add the Flathub app ID to `homebase.toml` `[flatpaks]` apps
+2. Run `homebase setup-flatpaks` to install
 
 **Update Doom Emacs config:**
 1. Edit files in `dot_config/doom/`

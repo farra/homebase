@@ -18,4 +18,5 @@ flake.lock
 # Directories
 images
 bootstrap
+scripts
 .github

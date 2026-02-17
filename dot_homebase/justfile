@@ -32,7 +32,7 @@ auth:
 # ── First-Time Setup ─────────────────────────────────────────────────────
 
 # Core setup shared by all profiles
-setup-core: setup-workspace doom-install install-agents
+setup-core: setup-workspace setup-flatpaks doom-install install-agents
     @echo ""
     @echo "Core setup complete!"
     @echo "  - Workspace directories created"
@@ -169,7 +169,7 @@ wts:
 # ── Updates ──────────────────────────────────────────────────────────────
 
 # Update everything (dotfiles + agents, and host tools if on host)
-update: update-dotfiles update-host update-agents
+update: update-dotfiles update-host update-flatpaks update-agents
     @echo ""
     @echo "All updates complete."
 
@@ -187,6 +187,66 @@ update-host:
         exit 0
     fi
     brew update && brew upgrade
+
+# ── Flatpak Apps ─────────────────────────────────────────────────────────
+
+# Install Flatpak apps declared in homebase.toml — skipped inside distrobox or if flatpak missing
+setup-flatpaks:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ -f /run/.containerenv ]]; then
+        echo "Inside a container — skipping Flatpak setup."
+        exit 0
+    fi
+    if ! command -v flatpak &>/dev/null; then
+        echo "flatpak not found — skipping (not applicable on this platform)."
+        exit 0
+    fi
+    CHEZMOI_SOURCE="$(chezmoi source-path 2>/dev/null || echo "$HOME/.local/share/chezmoi")"
+    PARSER="${CHEZMOI_SOURCE}/scripts/parse-toml-array.sh"
+    TOML="${CHEZMOI_SOURCE}/homebase.toml"
+    if [[ ! -x "$PARSER" ]]; then
+        echo "ERROR: TOML parser not found: $PARSER"
+        exit 1
+    fi
+    echo "Installing Flatpak apps from homebase.toml..."
+    while IFS= read -r app_id; do
+        if flatpak info "$app_id" &>/dev/null; then
+            echo "  Already installed: $app_id"
+        else
+            echo "  Installing: $app_id"
+            flatpak install --noninteractive flathub "$app_id"
+        fi
+    done < <("$PARSER" flatpaks apps "$TOML")
+    echo "Flatpak setup complete."
+
+# Update all installed Flatpak apps — skipped inside distrobox or if flatpak missing
+update-flatpaks:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ -f /run/.containerenv ]]; then
+        echo "Inside a container — skipping Flatpak update."
+        exit 0
+    fi
+    if ! command -v flatpak &>/dev/null; then
+        echo "flatpak not found — skipping (not applicable on this platform)."
+        exit 0
+    fi
+    echo "Updating Flatpak apps..."
+    flatpak update --noninteractive
+    echo "Flatpak update complete."
+
+# Remove a single Flatpak app (remember to also remove it from homebase.toml)
+remove-flatpak app_id:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v flatpak &>/dev/null; then
+        echo "flatpak not found."
+        exit 1
+    fi
+    flatpak uninstall --noninteractive "{{app_id}}"
+    echo "Removed: {{app_id}}"
+    echo "Remember to also remove it from homebase.toml [flatpaks] apps."
 
 # ── Box Lifecycle ────────────────────────────────────────────────────────
 #

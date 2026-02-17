@@ -300,6 +300,38 @@ else
     fi
 fi
 
+# ── Phase 9: Flatpak apps ────────────────────────────────────────────────────
+
+info "Phase 9: Flatpak apps"
+
+if stamp_check "09-flatpaks"; then
+    skip "Flatpak apps already installed"
+else
+    if command -v flatpak &>/dev/null; then
+        CHEZMOI_SOURCE="$HOME/.local/share/chezmoi"
+        PARSER="${CHEZMOI_SOURCE}/scripts/parse-toml-array.sh"
+        TOML="${CHEZMOI_SOURCE}/homebase.toml"
+        if [[ ! -x "$PARSER" ]]; then
+            warn "TOML parser not found at $PARSER — skipping Flatpak install"
+            warn "Re-run after chezmoi apply has completed"
+        else
+            while IFS= read -r app_id; do
+                if flatpak info "$app_id" &>/dev/null; then
+                    ok "$app_id already installed"
+                else
+                    echo "  Installing: $app_id"
+                    flatpak install --noninteractive flathub "$app_id"
+                    ok "$app_id installed"
+                fi
+            done < <("$PARSER" flatpaks apps "$TOML")
+            stamp_done "09-flatpaks"
+            ok "Flatpak apps installed"
+        fi
+    else
+        warn "flatpak not found. On Bazzite it should be pre-installed."
+    fi
+fi
+
 # ── Done ─────────────────────────────────────────────────────────────────────
 
 echo ""

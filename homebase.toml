@@ -81,6 +81,24 @@ nerd-fonts = ["FiraCode", "FiraMono"]
 # Homebrew casks (GUI apps, macOS only)
 casks = ["emacs", "1password-cli", "tailscale", "font-fira-code-nerd-font", "font-fira-mono-nerd-font"]
 
+[flatpaks]
+# Host-level desktop apps via Flatpak (Flathub)
+# Install: homebase setup-flatpaks
+# Update:  homebase update-flatpaks
+apps = [
+  # Core workflow
+  "md.obsidian.Obsidian",
+  "com.discordapp.Discord",
+  "com.slack.Slack",
+  # Common apps
+  "com.spotify.Client",
+  "com.ktechpit.whatsie",
+  # Browsers
+  "com.brave.Browser",
+  # Games (steam is pre-installed on Bazzite)
+  "org.prismlauncher.PrismLauncher",
+]
+
 [workspace]
 # Workspace layout — managed by chezmoi (externals + run_once script)
 # ~/forge              cloned via .chezmoiexternal.toml (regular clone, not worktree)
