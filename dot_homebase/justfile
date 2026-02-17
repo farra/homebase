@@ -61,10 +61,12 @@ setup profile="base": setup-core
     echo "Setup complete for profile: $profile"
 
 # Profile-specific setup hook: gamedev
-# Extend this as gamedev workflow matures (templates/export presets/SDK checks).
-setup-profile-gamedev:
-    @echo "Applying gamedev profile setup extensions..."
-    @echo "  (currently no extra gamedev setup steps defined)"
+# Must be run inside the gamedev distrobox.
+setup-profile-gamedev: godot-export godot-templates
+    @echo ""
+    @echo "Gamedev profile setup complete."
+    @echo "  - godot and godot-mono exported to host"
+    @echo "  - Export templates linked"
 
 # ── Workspace ────────────────────────────────────────────────────────────
 
@@ -373,6 +375,46 @@ doom-doctor:
 # Export Emacs to host desktop (distrobox only)
 doom-export:
     distrobox-export --app emacs 2>/dev/null || echo "Not in a distrobox?"
+
+# ── Godot (gamedev profile) ──────────────────────────────────────────────
+
+# Export Godot editors to host desktop (run inside gamedev distrobox)
+godot-export:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ ! -f /run/.containerenv ]]; then
+        echo "Not in a distrobox. Run this inside the gamedev container."
+        exit 1
+    fi
+    if command -v godot &>/dev/null; then
+        distrobox-export --bin /usr/local/bin/godot --export-path ~/.local/bin/
+    else
+        echo "godot not found — is this the gamedev container?"
+    fi
+    if command -v godot-mono &>/dev/null; then
+        distrobox-export --bin /usr/local/bin/godot-mono --export-path ~/.local/bin/
+    fi
+
+# Symlink baked export templates to Godot's expected location
+godot-templates:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ ! -d /opt/godot/export_templates ]]; then
+        echo "No export templates found in /opt/godot/ — is this the gamedev container?"
+        exit 1
+    fi
+    mkdir -p ~/.local/share/godot/export_templates
+    for tpl_dir in /opt/godot/export_templates/*/; do
+        version="$(basename "$tpl_dir")"
+        target="$HOME/.local/share/godot/export_templates/$version"
+        if [[ -L "$target" || -d "$target" ]]; then
+            echo "  Already linked: $version"
+        else
+            ln -sf "$tpl_dir" "$target"
+            echo "  Linked: $version"
+        fi
+    done
+    echo "Export templates available in Godot editor."
 
 # ── AI Agents ────────────────────────────────────────────────────────────
 
