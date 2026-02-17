@@ -25,15 +25,17 @@ LABEL org.opencontainers.image.description="Homebase development environment"
 
 # System-level GUI dependencies for apps not built by Nix
 # Nix-built apps (Emacs) bundle their own libs; directly-downloaded binaries
-# (Godot) dlopen() these at runtime. Full list extracted via:
-#   grep -aoP 'lib\w+\.so\.\d+' Godot_v4.6.1-stable_linux.x86_64 | sort -u
+# (Godot, Electron/Claude Desktop) need system libs at runtime.
+# gtk3: pulls in cairo, pango, at-spi2-core, libX*, libxcb, cups-libs, etc.
+# nss: Mozilla crypto/network libs needed by Chromium/Electron
 # Already in fedora-toolbox: systemd-libs (libudev), vulkan-loader
 RUN dnf install -y \
     fontconfig gsettings-desktop-schemas \
+    gtk3 nss \
     alsa-lib pulseaudio-libs speech-dispatcher-libs \
     libglvnd-egl libglvnd-glx libglvnd-gles \
-    libX11 libXcursor libXext libXi libXinerama libXrandr libXrender \
-    libwayland-cursor libxkbcommon \
+    libXinerama libwayland-cursor \
+    mesa-libgbm libnotify pciutils-libs \
     && dnf clean all
 
 # Profile-specific DNF packages (e.g. dotnet-sdk for Godot C# support)
