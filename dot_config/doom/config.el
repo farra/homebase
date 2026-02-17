@@ -341,13 +341,13 @@ Skips wrapping if already inside a nix shell (e.g., via direnv)."
      ((file-exists-p flake-nix)
       (let ((wrapped (+agent-shell--nix-wrap-command
                       (symbol-value command-var) project-root)))
-        (progv (list command-var) (list wrapped)
+        (cl-progv (list command-var) (list wrapped)
           (apply orig-fn args))))
      ;; Fall back to devbox.json
      ((file-exists-p devbox-json)
       (let ((wrapped (+agent-shell--devbox-wrap-command
                       (symbol-value command-var) project-root)))
-        (progv (list command-var) (list wrapped)
+        (cl-progv (list command-var) (list wrapped)
           (apply orig-fn args))))
      ;; No dev environment, run as-is
      (t (apply orig-fn args)))))
