@@ -1,6 +1,30 @@
 # ~/.zprofile - Login shell checks (runs once per session, not every subshell)
 
 # =============================================================================
+# Runtime secrets (1Password)
+# =============================================================================
+_load_homebase_secrets() {
+    local env_file="$HOME/.config/op/homebase-secrets.env"
+    [[ -f "$env_file" ]] || return 0
+    command -v op &>/dev/null || return 0
+
+    if ! op whoami &>/dev/null 2>&1; then
+        echo "1Password session required for runtime secrets."
+        eval "$(op signin)" || { echo "Skipping secrets (auth failed)."; return 1; }
+    fi
+
+    while IFS='=' read -r name ref; do
+        [[ "$name" =~ ^[#[:space:]] || -z "$name" ]] && continue
+        val="$(op read "$ref" 2>/dev/null)" && export "$name"="$val"
+    done < "$env_file"
+}
+
+if [[ -o interactive ]]; then
+    _load_homebase_secrets
+fi
+unset -f _load_homebase_secrets
+
+# =============================================================================
 # Distrobox entry checks
 # =============================================================================
 # These run when entering a distrobox (login shell) to surface useful warnings.
