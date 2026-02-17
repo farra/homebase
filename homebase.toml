@@ -6,7 +6,8 @@
 
 [host]
 # Minimal tools for the host OS (Homebrew)
-tools = ["git", "chezmoi", "zsh", "just", "direnv"]
+tools = ["git", "chezmoi", "zsh", "just", "direnv", "node"]
+# node: provides npm for AI agent CLIs (claude-code, ACP adapters)
 # 1password-cli installed separately (cask on macOS, brew on Linux)
 # tailscale: host-level VPN mesh (pre-installed on Bazzite, cask on macOS)
 # Configured manually after bootstrap (tailscale up)

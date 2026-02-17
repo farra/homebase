@@ -10,6 +10,7 @@ brew "chezmoi"
 brew "zsh"
 brew "just"
 brew "direnv"
+brew "node"           # npm for AI agent CLIs (claude-code, ACP adapters)
 
 # 1Password CLI
 cask "1password-cli" if OS.mac?
