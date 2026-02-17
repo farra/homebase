@@ -1,4 +1,8 @@
 personality = "pragmatic"
+model = "gpt-5.3-codex"
 
 [notice]
 hide_full_access_warning = true
+
+[notice.model_migrations]
+"gpt-5.2-codex" = "gpt-5.3-codex"

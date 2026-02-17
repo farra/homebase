@@ -37,3 +37,6 @@ result-*
 # direnv
 .direnv/
 .envrc.local
+
+# Claude Code
+**/.claude/settings.local.json
