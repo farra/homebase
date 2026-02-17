@@ -250,6 +250,8 @@ alias homebase='just --justfile ~/.homebase/justfile --working-directory ~/.home
 # Prompt (starship)
 # =============================================================================
 if command -v starship &> /dev/null; then
+    # Default to conservative prompt profile; switch to starship.toml when desired.
+    export STARSHIP_CONFIG="${XDG_CONFIG_HOME:-$HOME/.config}/starship.conservative.toml"
     eval "$(starship init zsh)"
 else
     PROMPT='%F{blue}%~%f %# '

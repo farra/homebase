@@ -1,0 +1,260 @@
+# Starship prompt configuration
+# Migrated from Oh My Posh "quick-term" theme
+# Two-line prompt: powerline segments + git/nix inline, right-aligned time
+
+# ── Layout ────────────────────────────────────────────────────────────────────
+# Line 1: > [OS | path] (container) (branch) (status) (nix)   duration [time]
+# Line 2: > >
+format = """
+[>](fg:#d75f00)\
+[](fg:#d75f00)\
+[ $os](bg:#d75f00 fg:#f2f3f8)\
+[](fg:#d75f00 bg:#0087af)\
+$container\
+[ $directory](bg:#0087af fg:#f2f3f8)\
+[ ](bg:#0087af)\
+[](fg:#0087af)\
+$git_branch\
+$git_status\
+$nix_shell\
+$fill\
+$cmd_duration\
+$time\
+$line_break\
+[>](fg:#d75f00) $character"""
+
+right_format = ""
+
+# ── Character (prompt symbol) ────────────────────────────────────────────────
+[character]
+success_symbol = "[>](fg:#d75f00)"
+error_symbol = "[>](fg:red)"
+
+# ── OS icon ──────────────────────────────────────────────────────────────────
+[os]
+disabled = false
+format = "$symbol"
+style = ""
+
+[os.symbols]
+Alpaquita = ""
+Alpine = ""
+AlmaLinux = ""
+Amazon = ""
+Android = ""
+Arch = ""
+CentOS = ""
+Debian = ""
+Fedora = ""
+FreeBSD = ""
+Gentoo = ""
+Kali = ""
+Linux = ""
+Macos = ""
+Manjaro = ""
+Mint = ""
+NixOS = ""
+OpenBSD = "obsd"
+openSUSE = ""
+Pop = ""
+Raspbian = ""
+Redhat = ""
+Ubuntu = ""
+Unknown = ""
+Void = ""
+Windows = "win"
+
+# ── Container (distrobox name — only visible inside a container) ─────────────
+[container]
+format = "[ ctr:$name >](bg:#0087af fg:#f2f3f8)"
+disabled = false
+
+# ── Directory ────────────────────────────────────────────────────────────────
+[directory]
+format = "$path$read_only"
+read_only = " [ro]"
+truncation_length = 3
+truncation_symbol = ".../"
+
+# ── Git branch (green powerline pill — always visible in git repos) ──────────
+[git_branch]
+format = " [](fg:#2d7a30)[ $branch](bg:#2d7a30 fg:#f2f3f8)[](fg:#2d7a30)"
+truncation_length = 25
+symbol = ""
+
+[git_commit]
+tag_symbol = "  "
+
+# ── Git status (amber powerline pill — only visible when dirty) ──────────────
+[git_status]
+format = "[](fg:#a97400)[ $all_status$ahead_behind](bg:#a97400 fg:#f2f3f8)[](fg:#a97400)"
+style = ""
+stashed = "S${count}"
+modified = "${count}"
+staged = "${count}"
+untracked = "?${count}"
+deleted = "${count}"
+renamed = "${count}"
+ahead = "[^${count}](bg:#a97400 fg:#ddc7ff)"
+behind = "[v${count}](bg:#a97400 fg:#ddc7ff)"
+diverged = "[^${ahead_count}v${behind_count}](bg:#a97400 fg:#ddc7ff)"
+
+# ── Nix shell (text pill — indicates active nix develop) ──────────────────────
+[nix_shell]
+heuristic = true
+symbol = "nix"
+format = " [](fg:#5277c3)[$symbol](bg:#5277c3 fg:#f2f3f8)[](fg:#5277c3)"
+style = ""
+
+# ── Fill (pushes right side content) ─────────────────────────────────────────
+[fill]
+symbol = " "
+
+# ── Command duration (right side, powerline) ────────────────────────────────
+[cmd_duration]
+min_time = 0
+format = "[](fg:#e4e4e4)[ t $duration](bg:#e4e4e4 fg:#585858)"
+
+# ── Time (right side, powerline) ─────────────────────────────────────────────
+[time]
+disabled = false
+format = "[](fg:#d75f00 bg:#e4e4e4)[ $time ](bg:#d75f00 fg:#f2f3f8)[](fg:#d75f00)"
+time_format = "%H:%M:%S"
+
+# ── Nerd Font Symbols (preset) ──────────────────────────────────────────────
+# Only overrides for modules not already configured above
+
+[aws]
+symbol = " "
+
+[buf]
+symbol = " "
+
+[bun]
+symbol = " "
+
+[c]
+symbol = " "
+
+[cpp]
+symbol = " "
+
+[cmake]
+symbol = " "
+
+[conda]
+symbol = " "
+
+[crystal]
+symbol = " "
+
+[dart]
+symbol = " "
+
+[deno]
+symbol = " "
+
+[docker_context]
+symbol = " "
+
+[elixir]
+symbol = " "
+
+[elm]
+symbol = " "
+
+[fennel]
+symbol = " "
+
+[fortran]
+symbol = " "
+
+[fossil_branch]
+symbol = " "
+
+[gcloud]
+symbol = " "
+
+[golang]
+symbol = " "
+
+[gradle]
+symbol = " "
+
+[guix_shell]
+symbol = " "
+
+[haskell]
+symbol = " "
+
+[haxe]
+symbol = " "
+
+[hg_branch]
+symbol = " "
+
+[hostname]
+ssh_symbol = " "
+
+[java]
+symbol = " "
+
+[julia]
+symbol = " "
+
+[kotlin]
+symbol = " "
+
+[lua]
+symbol = " "
+
+[memory_usage]
+symbol = "[mem] "
+
+[meson]
+symbol = "[meson] "
+
+[nim]
+symbol = "[nim] "
+
+[nodejs]
+symbol = " "
+
+[ocaml]
+symbol = " "
+
+[package]
+symbol = "[pkg] "
+
+[perl]
+symbol = " "
+
+[php]
+symbol = " "
+
+[pijul_channel]
+symbol = " "
+
+[python]
+symbol = " "
+
+[rlang]
+symbol = "[r] "
+
+[ruby]
+symbol = " "
+
+[rust]
+symbol = "[rs] "
+
+[scala]
+symbol = " "
+
+[status]
+symbol = " "
+
+[swift]
+symbol = " "
+
+[zig]
+symbol = " "
