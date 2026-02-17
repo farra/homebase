@@ -29,6 +29,7 @@
 ;; wasn't installed correctly. Font issues are rarely Doom issues!
 
 (setq doom-font (font-spec :family "FiraCode Nerd Font Mono" :size 18 :weight 'medium))
+(setq doom-symbol-font (font-spec :family "Symbols Nerd Font Mono" :size 18))
 
 ;; Keep monospace font in zen mode (disable mixed-pitch)
 (setq +zen-mixed-pitch-modes nil)
