@@ -27,11 +27,11 @@ jobs:
         profile:
           - name: base
             flake_env: homebase-base-env
-            base_image: fedora-toolbox:43
+            base_image: registry.fedoraproject.org/fedora-toolbox:43
             tag: latest
           - name: gamedev
             flake_env: homebase-gamedev-env
-            base_image: fedora-toolbox:43
+            base_image: registry.fedoraproject.org/fedora-toolbox:43
             tag: gamedev-latest
 
     steps:
