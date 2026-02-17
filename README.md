@@ -109,7 +109,10 @@ Forge does *not* follow this pattern — it's a regular clone at `~/forge`.
 
 ```bash
 just build-image        # Build baked distrobox image
+just build-variant gamedev                  # Build gamedev profile image (from homebase.toml)
+just build-variant base                     # Build base profile image (from homebase.toml)
 just test-local         # Build + create test distrobox
+just test-variant-local gamedev             # Build + test variant image
 just check              # Run nix flake check
 just dev                # Nix develop shell (macOS)
 just re-add             # Stage changes back to chezmoi source
@@ -120,11 +123,54 @@ just push               # Commit and push
 
 ```bash
 homebase setup              # First-time: workspace + Doom + agents
+homebase setup gamedev      # First-time gamedev: base setup + gamedev extensions
 homebase update             # Update everything (dotfiles + host + agents)
 homebase doom-sync          # After Doom config changes
-homebase distrobox-rebuild  # Pull fresh image + recreate distrobox
+homebase box rebuild        # Pull fresh base image + recreate 'home'
+homebase box create gamedev # Create gamedev box from profile image
+homebase box enter gamedev  # Enter gamedev box
 homebase                    # List all commands
 ```
+
+## Container Profiles
+
+Homebase supports multiple distrobox image profiles (flavors) built from the same Containerfile:
+
+- **base**: default daily-driver profile (`homebase-base-env`)
+- **gamedev**: base + game development stack (`homebase-gamedev-env`)
+
+Current profile metadata is documented in `homebase.toml` under:
+
+- `[profiles.base]`
+- `[profiles.gamedev]`
+
+Each profile can set:
+
+- `flake_env` (which flake package output to install)
+- `base_image` (container base distro/image)
+
+The build pipeline is profile-aware:
+
+- `images/Containerfile` accepts `BASE_IMAGE` and `FLAKE_ENV`
+- `just build-variant <profile>` resolves profile metadata from `homebase.toml`
+- images are tagged as `ghcr.io/farra/homebase:<profile>-latest`
+
+## Input Remapper
+
+Homebase tracks `input-remapper` configuration via chezmoi for reproducible mouse/controller mappings on Linux hosts.
+
+- Presets are source-controlled under `dot_config/input-remapper-2/presets/...`
+- Autoload is rendered from `dot_config/input-remapper-2/config.json.tmpl`
+- Autoload should remain host-aware (template conditions by hostname/device availability)
+
+Current test-case mapping:
+- Device: `Razer Razer DeathAdder Elite`
+- Preset: `desktop-nav`
+- Mapping: extra mouse button (`BTN_SIDE` code `275`) -> `SUPER_L+W` (KDE Overview)
+
+Recommended pattern for multi-machine portability:
+- Keep presets backed up in git even if some devices are absent on other hosts.
+- Gate autoload entries in `config.json.tmpl` so only matching hosts enable specific devices.
 
 ## Repository Structure
 
@@ -147,10 +193,13 @@ homebase                    # List all commands
 │   ├── starship.toml             # Starship prompt (Nerd Font Symbols + nix detect)
 │   ├── git/ignore                # Global gitignore
 │   ├── gh/config.yml             # GitHub CLI config
+│   ├── input-remapper-2/         # input-remapper presets + host-aware autoload template
 │   ├── zed/settings.json         # Zed editor config
 │   └── glow/glow.yml             # Markdown viewer config
 ├── dot_zshrc.tmpl                # Shell config (zsh + plugins + aliases)
 ├── dot_gitconfig.tmpl            # Git config (templated)
+├── dot_config/input-remapper-2/config.json.tmpl   # input-remapper autoload (host-aware)
+├── dot_config/input-remapper-2/presets/...        # device-specific mapping presets
 ├── run_once_before_import-gpg-keys.sh.tmpl  # Import GPG keys from 1Password
 ├── run_onchange_create-authinfo-gpg.sh.tmpl # Encrypted ~/.authinfo.gpg from PAT
 ├── private_dot_ssh/              # SSH keys + config (from 1Password)

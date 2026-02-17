@@ -16,11 +16,27 @@ default:
 
 # ── Image Building ───────────────────────────────────────────────────────
 
-# Build the homebase OCI image
-build-image: _require-runtime
+# Build a profile image (base→:latest, others→:PROFILE-latest)
+# Usage:
+#   just build-variant base
+#   just build-variant gamedev
+build-variant profile: _require-runtime
+    #!/usr/bin/env bash
+    set -euo pipefail
+    eval "$(bash scripts/resolve-profile.sh "{{profile}}" homebase.toml)"
+    if [[ "{{profile}}" == "base" ]]; then
+        tag="latest"
+    else
+        tag="{{profile}}-latest"
+    fi
     {{runtime}} build \
-        -t {{registry}}/{{image_name}}:latest \
+        -t {{registry}}/{{image_name}}:"$tag" \
+        --build-arg BASE_IMAGE="$RESOLVED_BASE_IMAGE" \
+        --build-arg FLAKE_ENV="$RESOLVED_FLAKE_ENV" \
         -f images/Containerfile .
+
+# Build the default (base) homebase OCI image
+build-image: (build-variant "base")
 
 # Tag the image with a version
 tag-image version:
@@ -30,8 +46,19 @@ tag-image version:
 push-image:
     {{runtime}} push {{registry}}/{{image_name}}:latest
 
+# Push a profile/flavor image
+push-variant profile:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ "{{profile}}" == "base" ]]; then
+        tag="latest"
+    else
+        tag="{{profile}}-latest"
+    fi
+    {{runtime}} push {{registry}}/{{image_name}}:"$tag"
+
 # Build, tag, and push a release
-release version: build-image (tag-image version)
+release version: (build-variant "base") (tag-image version)
     {{runtime}} push {{registry}}/{{image_name}}:latest
     {{runtime}} push {{registry}}/{{image_name}}:{{version}}
 
@@ -40,19 +67,28 @@ build-ci:
     gh workflow run "Build Images"
     @echo "Workflow triggered. Watch with: gh run watch"
 
-# Build image and test in a throwaway distrobox
-test-local: build-image
+# Build variant image and test in a throwaway distrobox
+test-variant-local profile: (build-variant profile)
     #!/usr/bin/env bash
     set -euo pipefail
-    distrobox rm homebase-test --force 2>/dev/null || true
+    if [[ "{{profile}}" == "base" ]]; then
+        tag="latest"
+    else
+        tag="{{profile}}-latest"
+    fi
+    box_name="homebase-{{profile}}-test"
+    distrobox rm "$box_name" --force 2>/dev/null || true
     VOLUME_FLAGS=""
     if [[ -d "/home/linuxbrew" ]]; then
         VOLUME_FLAGS="--volume /home/linuxbrew:/home/linuxbrew"
     fi
-    distrobox create --image {{registry}}/{{image_name}}:latest --name homebase-test \
+    distrobox create --image {{registry}}/{{image_name}}:"$tag" --name "$box_name" \
         --init-hooks "usermod -s /usr/bin/zsh \$USER" \
         $VOLUME_FLAGS
-    echo "Created distrobox 'homebase-test'. Enter with: distrobox enter homebase-test"
+    echo "Created distrobox '$box_name'. Enter with: distrobox enter $box_name"
+
+# Build image and test in a throwaway distrobox (base profile)
+test-local: (test-variant-local "base")
 
 # ── Dotfile Development ──────────────────────────────────────────────────
 

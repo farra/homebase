@@ -11,10 +11,10 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        # All tools that should be available in the homebase environment.
+        # Shared base tools for all homebase container profiles.
         # Language runtimes (python, node, rust, go) are per-project via
         # cautomaton-develops nix develop shells, not here.
-        homebasePackages = with pkgs; [
+        homebaseBasePackages = with pkgs; [
           # Core
           git
           zsh
@@ -65,21 +65,37 @@
             vterm
           ]))
         ];
+
+        # Game development profile extras.
+        # Keep this focused on heavy, domain-specific tooling that should not
+        # bloat the default daily-driver profile.
+        homebaseGamedevExtras = with pkgs; [
+          godot_4
+          dotnet-sdk_8
+        ];
+
+        homebaseGamedevPackages = homebaseBasePackages ++ homebaseGamedevExtras;
       in
       {
         packages = {
-          # buildEnv for nix profile install (used in Containerfile)
-          homebase-env = pkgs.buildEnv {
-            name = "homebase-env";
-            paths = homebasePackages;
+          # Base profile: default daily-driver distrobox tools
+          homebase-base-env = pkgs.buildEnv {
+            name = "homebase-base-env";
+            paths = homebaseBasePackages;
           };
 
-          default = self.packages.${system}.homebase-env;
+          # Gamedev profile: base + game development stack
+          homebase-gamedev-env = pkgs.buildEnv {
+            name = "homebase-gamedev-env";
+            paths = homebaseGamedevPackages;
+          };
+
+          default = self.packages.${system}.homebase-base-env;
         };
 
         # devShell for macOS native use (nix develop)
         devShells.default = pkgs.mkShell {
-          packages = homebasePackages;
+          packages = homebaseBasePackages;
           shellHook = ''
             echo "homebase dev environment"
           '';

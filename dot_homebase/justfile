@@ -4,7 +4,8 @@
 # Lives at ~/.homebase/justfile, shared across host and all containers via $HOME.
 #
 # Usage:
-#   cd ~/.homebase && just setup         # full first-time setup
+#   cd ~/.homebase && just setup         # full first-time setup (base)
+#   cd ~/.homebase && just setup gamedev # base setup + gamedev extensions
 #   cd ~/.homebase && just update        # update everything
 #   homebase                             # shell alias for cd ~/.homebase && just
 
@@ -30,13 +31,40 @@ auth:
 
 # ── First-Time Setup ─────────────────────────────────────────────────────
 
-# Full first-time setup
-setup: setup-workspace doom-install install-agents
+# Core setup shared by all profiles
+setup-core: setup-workspace doom-install install-agents
     @echo ""
-    @echo "Setup complete!"
+    @echo "Core setup complete!"
     @echo "  - Workspace directories created"
     @echo "  - Doom Emacs installed (run 'just doom-sync' after config changes)"
     @echo "  - AI agents installed (claude, codex, gemini)"
+
+# Full first-time setup (profile-aware)
+# Usage:
+#   homebase setup            # base profile
+#   homebase setup gamedev    # base + gamedev profile extensions
+setup profile="base": setup-core
+    #!/usr/bin/env bash
+    set -euo pipefail
+    profile="{{profile}}"
+    if [[ "$profile" != "base" ]]; then
+        recipe="setup-profile-${profile}"
+        if just --summary 2>/dev/null | tr ' ' '\n' | grep -qx "$recipe"; then
+            just "$recipe"
+        else
+            echo "ERROR: No setup recipe '${recipe}' found for profile '${profile}'"
+            echo "Add a '${recipe}' recipe to ~/.homebase/justfile to support this profile."
+            exit 1
+        fi
+    fi
+    echo ""
+    echo "Setup complete for profile: $profile"
+
+# Profile-specific setup hook: gamedev
+# Extend this as gamedev workflow matures (templates/export presets/SDK checks).
+setup-profile-gamedev:
+    @echo "Applying gamedev profile setup extensions..."
+    @echo "  (currently no extra gamedev setup steps defined)"
 
 # ── Workspace ────────────────────────────────────────────────────────────
 
@@ -160,38 +188,77 @@ update-host:
     fi
     brew update && brew upgrade
 
-# ── Distrobox Lifecycle ──────────────────────────────────────────────────
-
-# Create the homebase distrobox
-distrobox-create:
+# ── Box Lifecycle ────────────────────────────────────────────────────────
+#
+# Canonical interface:
+#   homebase box create            # base profile -> box name "home"
+#   homebase box enter             # enter "home"
+#   homebase box create gamedev    # gamedev profile -> box name "gamedev"
+#   homebase box enter gamedev
+#   homebase box rm gamedev
+#   homebase box rebuild gamedev
+#
+# Syntax:
+#   homebase box <action> [profile] [name]
+# Actions: create | enter | rm | rebuild
+box action profile="base" name="":
     #!/usr/bin/env bash
     set -euo pipefail
+
     if [[ -z "{{runtime}}" ]]; then
         echo "ERROR: Neither podman nor docker found. Install one first."
         exit 1
     fi
-    {{runtime}} pull {{registry}}/{{image_name}}:latest
-    # Mount host Homebrew if installed to /home/linuxbrew (not in $HOME)
-    VOLUME_FLAGS=""
-    if [[ -d "/home/linuxbrew" ]]; then
-        VOLUME_FLAGS="--volume /home/linuxbrew:/home/linuxbrew"
+
+    _box_create() {
+        local image_ref="$1" box_name="$2"
+        local volume_flags=""
+        if [[ -d "/home/linuxbrew" ]]; then
+            volume_flags="--volume /home/linuxbrew:/home/linuxbrew"
+        fi
+        distrobox create --image "$image_ref" --name "$box_name" \
+            --init-hooks "usermod -s /usr/bin/zsh \$USER" \
+            $volume_flags
+    }
+
+    action="{{action}}"
+    profile="{{profile}}"
+    box_name="{{name}}"
+
+    if [[ "$profile" == "base" ]]; then
+        image_ref="{{registry}}/{{image_name}}:latest"
+        default_box_name="home"
+    else
+        image_ref="{{registry}}/{{image_name}}:${profile}-latest"
+        default_box_name="$profile"
     fi
-    distrobox create --image {{registry}}/{{image_name}}:latest --name home \
-        --init-hooks "usermod -s /usr/bin/zsh \$USER" \
-        $VOLUME_FLAGS
 
-# Enter the homebase distrobox
-distrobox-enter:
-    distrobox enter home
+    if [[ -z "$box_name" ]]; then
+        box_name="$default_box_name"
+    fi
 
-# Remove the homebase distrobox
-distrobox-rm:
-    distrobox rm home --force
-
-# Rebuild distrobox from latest image (pulls fresh, recreates)
-distrobox-rebuild: distrobox-rm distrobox-create
-    @echo "Distrobox 'home' rebuilt from latest image."
-    @echo "Run 'just distrobox-enter' to enter."
+    case "$action" in
+        create)
+            {{runtime}} pull "$image_ref"
+            _box_create "$image_ref" "$box_name"
+            ;;
+        enter)
+            distrobox enter "$box_name"
+            ;;
+        rm)
+            distrobox rm "$box_name" --force
+            ;;
+        rebuild)
+            distrobox rm "$box_name" --force 2>/dev/null || true
+            {{runtime}} pull "$image_ref"
+            _box_create "$image_ref" "$box_name"
+            ;;
+        *)
+            echo "ERROR: Unknown box action '$action'"
+            echo "Usage: homebase box <create|enter|rm|rebuild> [profile] [name]"
+            exit 1
+            ;;
+    esac
 
 # ── Doom Emacs ───────────────────────────────────────────────────────────
 

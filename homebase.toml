@@ -60,6 +60,17 @@ tools = [
 # AI agents installed separately via ~/.homebase/justfile (not baked):
 # claude-code, codex, gemini-cli
 
+[profiles.base]
+# Default daily-driver profile.
+# flake_env maps to flake output package name (see flake.nix packages).
+flake_env = "homebase-base-env"
+base_image = "registry.fedoraproject.org/fedora-toolbox:43"
+
+[profiles.gamedev]
+# Heavy game-development stack on top of the base profile.
+flake_env = "homebase-gamedev-env"
+base_image = "registry.fedoraproject.org/fedora-toolbox:43"
+
 [fonts]
 # Host-level fonts (not in container — terminal and display server are on the host)
 # Bazzite: downloaded to ~/.local/share/fonts/ during bootstrap

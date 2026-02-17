@@ -1,0 +1,16 @@
+{{- /*
+input-remapper autoload config
+
+Strategy:
+- Keep presets in source control (portable backup).
+- Keep autoload host-aware to avoid enabling unavailable devices on other machines.
+*/ -}}
+{{- $host := .chezmoi.hostname -}}
+{
+    "version": "2.2.0",
+    "autoload": {
+{{- if or (eq $host "bazzite") (eq $host "bazzite.lan") }}
+        "Razer Razer DeathAdder Elite": "desktop-nav"
+{{- end }}
+    }
+}

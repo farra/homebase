@@ -11,6 +11,7 @@
 #   distrobox enter home
 
 ARG BASE_IMAGE=registry.fedoraproject.org/fedora-toolbox:43
+ARG FLAKE_ENV=homebase-base-env
 FROM ${BASE_IMAGE}
 
 LABEL com.github.containers.toolbox="true"
@@ -37,7 +38,7 @@ ENV PATH="/nix/var/nix/profiles/default/bin:$PATH"
 # Copy flake into image and install all tools
 COPY flake.nix flake.lock /tmp/homebase-flake/
 RUN cd /tmp/homebase-flake && \
-    nix profile install .#homebase-env \
+    nix profile install .#${FLAKE_ENV} \
         --extra-experimental-features "nix-command flakes" && \
     rm -rf /tmp/homebase-flake
 
