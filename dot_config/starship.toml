@@ -99,12 +99,12 @@ ahead = "[⇡${count}](bg:#a97400 fg:#ddc7ff)"
 behind = "[⇣${count}](bg:#a97400 fg:#ddc7ff)"
 diverged = "[⇡${ahead_count}⇣${behind_count}](bg:#a97400 fg:#ddc7ff)"
 
-# ── Nix shell (icon-only — just indicates active nix develop) ─────────────────
+# ── Nix shell (icon-only pill — indicates active nix develop) ─────────────────
 [nix_shell]
 heuristic = true
 symbol = " "
-format = " [$symbol]($style)"
-style = "bold blue"
+format = " [](fg:#5277c3)[$symbol](bg:#5277c3 fg:#f2f3f8)[](fg:#5277c3)"
+style = ""
 
 # ── Fill (pushes right side content) ─────────────────────────────────────────
 [fill]
