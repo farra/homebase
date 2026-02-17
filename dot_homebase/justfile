@@ -293,7 +293,7 @@ box action profile="base" name="":
             volume_flags="--volume /home/linuxbrew:/home/linuxbrew"
         fi
         distrobox create --image "$image_ref" --name "$box_name" \
-            --init-hooks "usermod -s /usr/bin/zsh \$USER" \
+            --init-hooks 'usermod -s /usr/bin/zsh "$(whoami)"' \
             $volume_flags
         # Run init to completion before first enter (works around distrobox
         # log-tailing race where enter hangs or the container exits with code 1)
