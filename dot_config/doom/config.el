@@ -42,6 +42,10 @@
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
 (setq display-line-numbers-type t)
 
+;; vterm: use zsh (Emacs defaults to bash via shell-file-name)
+(after! vterm
+  (setq vterm-shell (or (getenv "SHELL") "/usr/bin/zsh")))
+
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
 (when (file-directory-p "~/forge/")
