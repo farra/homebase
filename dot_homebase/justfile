@@ -279,6 +279,21 @@ box action profile="base" name="":
         distrobox create --image "$image_ref" --name "$box_name" \
             --init-hooks "usermod -s /usr/bin/zsh \$USER" \
             $volume_flags
+        # Run init to completion before first enter (works around distrobox
+        # log-tailing race where enter hangs or the container exits with code 1)
+        echo "Initializing container '$box_name'..."
+        {{runtime}} start "$box_name" >/dev/null 2>&1 || true
+        # Wait for distrobox-init to finish (creates /.containersetupdone)
+        local tries=0
+        while ! {{runtime}} exec "$box_name" test -f /.containersetupdone 2>/dev/null; do
+            sleep 2
+            tries=$((tries + 1))
+            if [[ $tries -ge 60 ]]; then
+                echo "WARNING: Container init timed out after 120s"
+                break
+            fi
+        done
+        echo "Container '$box_name' ready."
     }
 
     action="{{action}}"
