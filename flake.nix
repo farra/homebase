@@ -70,7 +70,8 @@
         # Keep this focused on heavy, domain-specific tooling that should not
         # bloat the default daily-driver profile.
         homebaseGamedevExtras = with pkgs; [
-          godot_4
+          godot_4        # GDScript projects → `godot`
+          godot_4-mono   # C# projects → `godot-mono`
           dotnet-sdk_8
         ];
 
