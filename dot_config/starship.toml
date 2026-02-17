@@ -3,8 +3,8 @@
 # Two-line prompt: powerline segments + git/nix inline, right-aligned time
 
 # ── Layout ────────────────────────────────────────────────────────────────────
-# Line 1: ╭─ [OS | username | path] git nix_shell           duration time
-# Line 2: ╰─ $
+# Line 1: ╭─ [OS | username | path] [branch] [status] nix   duration [time]
+# Line 2: ╰─ ❯
 format = """
 [╭─](fg:#d75f00)\
 [](fg:#d75f00)\
@@ -28,8 +28,8 @@ right_format = ""
 
 # ── Character (prompt symbol) ────────────────────────────────────────────────
 [character]
-success_symbol = ""
-error_symbol = "[](fg:red)"
+success_symbol = "[❯](fg:#d75f00)"
+error_symbol = "[❯](fg:red)"
 
 # ── OS icon ──────────────────────────────────────────────────────────────────
 [os]
@@ -79,29 +79,28 @@ read_only = " 󰌾"
 truncation_length = 3
 truncation_symbol = "…/"
 
-# ── Git branch ───────────────────────────────────────────────────────────────
+# ── Git branch (green powerline pill — always visible in git repos) ──────────
 [git_branch]
-format = " [ $branch](fg:#378504)"
+format = " [](fg:#2d7a30)[ $branch](bg:#2d7a30 fg:#f2f3f8)[](fg:#2d7a30)"
 truncation_length = 25
 symbol = ""
 
 [git_commit]
 tag_symbol = "  "
 
-# ── Git status ───────────────────────────────────────────────────────────────
-# Amber (#a97400) for modifications, matches posh theme dirty color
+# ── Git status (amber powerline pill — only visible when dirty) ──────────────
 [git_status]
-format = "[$all_status$ahead_behind]($style)"
-style = "fg:#a97400"
-stashed = " 󰏗${count}"
-modified = " ${count}"
-staged = " ${count}"
-untracked = " ?${count}"
-deleted = " ${count}"
-renamed = " ${count}"
-ahead = " [⇡${count}](fg:#744d89)"
-behind = " [⇣${count}](fg:#744d89)"
-diverged = " [⇡${ahead_count}⇣${behind_count}](fg:#744d89)"
+format = "[](fg:#a97400)[ $all_status$ahead_behind](bg:#a97400 fg:#f2f3f8)[](fg:#a97400)"
+style = ""
+stashed = "󰏗${count}"
+modified = "${count}"
+staged = "${count}"
+untracked = "?${count}"
+deleted = "${count}"
+renamed = "${count}"
+ahead = "[⇡${count}](bg:#a97400 fg:#ddc7ff)"
+behind = "[⇣${count}](bg:#a97400 fg:#ddc7ff)"
+diverged = "[⇡${ahead_count}⇣${behind_count}](bg:#a97400 fg:#ddc7ff)"
 
 # ── Nix shell (critical: heuristic needed for nix develop) ───────────────────
 [nix_shell]
