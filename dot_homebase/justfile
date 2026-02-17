@@ -105,11 +105,14 @@ clones:
 
 # Create a worktree from a bare clone
 # Usage: homebase wt projectA fix-auth [group]
+# Branch slashes are flattened in directory name: local/build → project-local-build
 wt project branch group="me":
     #!/usr/bin/env bash
     set -euo pipefail
     bare="$HOME/dev/.worktrees/{{project}}.git"
-    dest="$HOME/dev/{{group}}/{{project}}-{{branch}}"
+    branch="{{branch}}"
+    flat_branch="${branch//\//-}"
+    dest="$HOME/dev/{{group}}/{{project}}-${flat_branch}"
     if [[ ! -d "$bare" ]]; then
         echo "No bare clone found: $bare"
         echo "Run: homebase clone <org>/{{project}}"
@@ -119,28 +122,39 @@ wt project branch group="me":
         echo "Worktree already exists: $dest"
         exit 0
     fi
-    git -C "$bare" worktree add "$dest" -b "{{branch}}"
-    echo "Created: $dest (branch: {{branch}})"
+    git -C "$bare" worktree add "$dest" -b "$branch"
+    echo "Created: $dest (branch: $branch)"
 
 # Create a worktree from an existing remote branch
+# Branch slashes are flattened in directory name: feature/foo → project-feature-foo
 wt-checkout project branch group="me":
     #!/usr/bin/env bash
     set -euo pipefail
     bare="$HOME/dev/.worktrees/{{project}}.git"
-    dest="$HOME/dev/{{group}}/{{project}}-{{branch}}"
+    branch="{{branch}}"
+    flat_branch="${branch//\//-}"
+    dest="$HOME/dev/{{group}}/{{project}}-${flat_branch}"
     if [[ ! -d "$bare" ]]; then
         echo "No bare clone found: $bare"
         exit 1
     fi
     git -C "$bare" fetch origin
-    git -C "$bare" worktree add "$dest" "{{branch}}"
-    echo "Checked out: $dest (branch: {{branch}})"
+    git -C "$bare" worktree add "$dest" "$branch"
+    echo "Checked out: $dest (branch: $branch)"
 
 # Remove a worktree (keeps the branch)
+# Accepts absolute path or relative path from ~/dev/
+# Usage: homebase wt-rm jmt/gongfu-local-build
+#        homebase wt-rm ~/dev/jmt/gongfu-local-build
 wt-rm path:
     #!/usr/bin/env bash
     set -euo pipefail
-    target="$HOME/dev/{{path}}"
+    input="{{path}}"
+    if [[ "$input" = /* ]]; then
+        target="$input"
+    else
+        target="$HOME/dev/$input"
+    fi
     if [[ ! -d "$target" ]]; then
         echo "Not found: $target"
         exit 1
