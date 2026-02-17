@@ -3,18 +3,17 @@
 # Two-line prompt: powerline segments + git/nix inline, right-aligned time
 
 # ── Layout ────────────────────────────────────────────────────────────────────
-# Line 1: ╭─ [OS | username | path] [branch] [status] nix   duration [time]
+# Line 1: ╭─ [OS | path] (container) (branch) (status) nix   duration [time]
 # Line 2: ╰─ ❯
 format = """
 [╭─](fg:#d75f00)\
 [](fg:#d75f00)\
 [ $os](bg:#d75f00 fg:#f2f3f8)\
-[](fg:#d75f00 bg:#e4e4e4)\
-[ $username](bg:#e4e4e4 fg:#4e4e4e)\
-[](fg:#e4e4e4 bg:#0087af)\
+[](fg:#d75f00 bg:#0087af)\
 [ $directory](bg:#0087af fg:#f2f3f8)\
 [ ](bg:#0087af)\
 [](fg:#0087af)\
+$container\
 $git_branch\
 $git_status\
 $nix_shell\
@@ -65,12 +64,10 @@ Unknown = ""
 Void = ""
 Windows = "󰍲"
 
-# ── Username ─────────────────────────────────────────────────────────────────
-[username]
-show_always = true
-format = "$user"
-style_user = ""
-style_root = ""
+# ── Container (distrobox name pill — only visible inside a container) ────────
+[container]
+format = " [](fg:#7a3d9e)[ 󰆍 $name](bg:#7a3d9e fg:#f2f3f8)[](fg:#7a3d9e)"
+disabled = false
 
 # ── Directory ────────────────────────────────────────────────────────────────
 [directory]
