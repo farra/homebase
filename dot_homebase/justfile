@@ -234,8 +234,8 @@ doom-export:
 
 # ── AI Agents ────────────────────────────────────────────────────────────
 
-# Install all AI agent CLIs
-install-agents: install-claude install-codex install-gemini
+# Install all AI agent CLIs and ACP adapters (for agent-shell in Emacs)
+install-agents: install-claude install-codex install-gemini install-acp
 
 # Install Claude Code
 install-claude:
@@ -276,8 +276,18 @@ install-gemini:
     brew install gemini-cli
     echo "Gemini CLI installed"
 
-# Update all AI agent CLIs
-update-agents: update-claude update-codex update-gemini
+# Install ACP adapters (Agent Client Protocol — bridges agents to Emacs agent-shell)
+install-acp:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    echo "Installing ACP adapters for agent-shell..."
+    npm install -g @zed-industries/claude-code-acp
+    npm install -g @zed-industries/codex-acp
+    echo "ACP adapters installed (claude-code-acp, codex-acp)"
+    echo "Note: Gemini has native ACP support via --experimental-acp (no adapter needed)"
+
+# Update all AI agent CLIs and ACP adapters
+update-agents: update-claude update-codex update-gemini update-acp
 
 # Update Claude Code
 update-claude:
@@ -290,3 +300,8 @@ update-codex:
 # Update Gemini CLI
 update-gemini:
     brew upgrade gemini-cli || brew install gemini-cli
+
+# Update ACP adapters
+update-acp:
+    npm install -g @zed-industries/claude-code-acp
+    npm install -g @zed-industries/codex-acp
