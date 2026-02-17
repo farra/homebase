@@ -116,16 +116,20 @@ if command -v direnv &> /dev/null; then
     eval "$(direnv hook zsh)"
 fi
 
-# 1Password runtime secrets (manual reload)
+# 1Password runtime secrets
 load-secrets() {
     local env_file="$HOME/.config/op/homebase-secrets.env"
     if [[ ! -f "$env_file" ]]; then
         echo "No secrets env file. Run 'chezmoi apply' first."
         return 1
     fi
+    if ! command -v op &>/dev/null; then
+        echo "op CLI not found."
+        return 1
+    fi
     if ! op whoami &>/dev/null 2>&1; then
         echo "Signing in to 1Password..."
-        eval "$(op signin)" || return 1
+        eval "$(op signin)" || { echo "Skipping secrets (auth failed)."; return 1; }
     fi
     while IFS='=' read -r name ref; do
         [[ "$name" =~ ^[#[:space:]] || -z "$name" ]] && continue
@@ -133,6 +137,11 @@ load-secrets() {
     done < "$env_file"
     echo "Runtime secrets loaded."
 }
+
+# Auto-load secrets if not already present (inherited from parent shell)
+if [[ -z "$GITHUB_TOKEN" ]] && [[ -f "$HOME/.config/op/homebase-secrets.env" ]] && command -v op &>/dev/null; then
+    load-secrets
+fi
 
 # zoxide (smart cd — use z instead of cd)
 if command -v zoxide &> /dev/null; then
