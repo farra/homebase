@@ -23,10 +23,18 @@ LABEL com.github.containers.toolbox="true"
 LABEL org.opencontainers.image.source="https://github.com/farra/homebase"
 LABEL org.opencontainers.image.description="Homebase development environment"
 
-# System-level GUI dependencies for Nix-installed apps (Emacs)
-# fontconfig: font discovery config at /etc/fonts/fonts.conf
-# gsettings-desktop-schemas: GSettings schemas for GTK apps
-RUN dnf install -y fontconfig gsettings-desktop-schemas && dnf clean all
+# System-level GUI dependencies for apps not built by Nix
+# Nix-built apps (Emacs) bundle their own libs; directly-downloaded binaries
+# (Godot) dlopen() these at runtime. Full list extracted via:
+#   grep -aoP 'lib\w+\.so\.\d+' Godot_v4.6.1-stable_linux.x86_64 | sort -u
+# Already in fedora-toolbox: systemd-libs (libudev), vulkan-loader
+RUN dnf install -y \
+    fontconfig gsettings-desktop-schemas \
+    alsa-lib pulseaudio-libs speech-dispatcher-libs \
+    libglvnd-egl libglvnd-glx libglvnd-gles \
+    libX11 libXcursor libXext libXi libXinerama libXrandr libXrender \
+    libwayland-cursor libxkbcommon \
+    && dnf clean all
 
 # Profile-specific DNF packages (e.g. dotnet-sdk for Godot C# support)
 RUN if [ -n "$DNF_PACKAGES" ]; then dnf install -y $DNF_PACKAGES && dnf clean all; fi
