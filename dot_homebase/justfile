@@ -454,8 +454,8 @@ install-claude-desktop:
     #!/usr/bin/env bash
     set -euo pipefail
     if [[ ! -f /run/.containerenv ]]; then
-        echo "Not in a distrobox. Run this inside the home container."
-        exit 1
+        echo "Not in a distrobox — skipping Claude Desktop install."
+        exit 0
     fi
     if command -v claude-desktop &>/dev/null; then
         echo "Claude Desktop already installed: $(claude-desktop --version 2>/dev/null || echo 'unknown version')"
