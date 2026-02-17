@@ -14,6 +14,9 @@ ARG BASE_IMAGE=registry.fedoraproject.org/fedora-toolbox:43
 ARG FLAKE_ENV=homebase-base-env
 FROM ${BASE_IMAGE}
 
+# Re-declare FLAKE_ENV inside the build stage (ARGs before FROM go out of scope)
+ARG FLAKE_ENV=homebase-base-env
+
 LABEL com.github.containers.toolbox="true"
 LABEL org.opencontainers.image.source="https://github.com/farra/homebase"
 LABEL org.opencontainers.image.description="Homebase development environment"
