@@ -68,10 +68,12 @@ base_image = "registry.fedoraproject.org/fedora-toolbox:43"
 
 [profiles.gamedev]
 # Heavy game-development stack on top of the base profile.
-# GUI apps (godot) installed via DNF for host GPU driver access.
+# Godot downloaded from official releases (not Nix/DNF) for latest versions + GPU access.
+# Export templates baked in at /opt/godot/export_templates/<version>.stable/
 flake_env = "homebase-gamedev-env"
 base_image = "registry.fedoraproject.org/fedora-toolbox:43"
-dnf_packages = ["godot", "dotnet-sdk-8.0"]
+dnf_packages = ["dotnet-sdk-8.0"]
+godot_version = "4.6.1"
 
 [fonts]
 # Host-level fonts (not in container — terminal and display server are on the host)

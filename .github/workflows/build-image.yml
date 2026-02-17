@@ -30,11 +30,13 @@ jobs:
             base_image: registry.fedoraproject.org/fedora-toolbox:43
             tag: latest
             dnf_packages: ""
+            godot_version: ""
           - name: gamedev
             flake_env: homebase-gamedev-env
             base_image: registry.fedoraproject.org/fedora-toolbox:43
             tag: gamedev-latest
-            dnf_packages: "godot dotnet-sdk-8.0"
+            dnf_packages: "dotnet-sdk-8.0"
+            godot_version: "4.6.1"
 
     steps:
       - name: Checkout
@@ -68,3 +70,4 @@ jobs:
             BASE_IMAGE=${{ matrix.profile.base_image }}
             FLAKE_ENV=${{ matrix.profile.flake_env }}
             DNF_PACKAGES=${{ matrix.profile.dnf_packages }}
+            GODOT_VERSION=${{ matrix.profile.godot_version }}
