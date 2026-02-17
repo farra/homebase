@@ -432,8 +432,8 @@ godot-templates:
 
 # ── AI Agents ────────────────────────────────────────────────────────────
 
-# Install all AI agent CLIs and ACP adapters (for agent-shell in Emacs)
-install-agents: install-claude install-codex install-gemini install-acp
+# Install all AI agent CLIs, desktop app, and ACP adapters
+install-agents: install-claude install-claude-desktop install-codex install-gemini install-acp
 
 # Install Claude Code
 install-claude:
@@ -447,6 +447,32 @@ install-claude:
     echo "Installing Claude Code..."
     curl -fsSL https://claude.ai/install.sh | bash
     echo "Claude Code installed"
+
+# Install Claude Desktop (unofficial Linux build, for CoWork)
+# Requires distrobox — installs via DNF and exports to host desktop
+install-claude-desktop:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ ! -f /run/.containerenv ]]; then
+        echo "Not in a distrobox. Run this inside the home container."
+        exit 1
+    fi
+    if command -v claude-desktop &>/dev/null; then
+        echo "Claude Desktop already installed: $(claude-desktop --version 2>/dev/null || echo 'unknown version')"
+        echo "Run 'just update-claude-desktop' to update"
+        exit 0
+    fi
+    # Add DNF repo if not present
+    if [[ ! -f /etc/yum.repos.d/claude-desktop.repo ]]; then
+        echo "Adding Claude Desktop DNF repository..."
+        sudo curl -fsSL https://aaddrick.github.io/claude-desktop-debian/rpm/claude-desktop.repo \
+            -o /etc/yum.repos.d/claude-desktop.repo
+    fi
+    echo "Installing Claude Desktop..."
+    sudo dnf install -y claude-desktop
+    echo "Exporting Claude Desktop to host..."
+    distrobox-export --app claude-desktop 2>/dev/null || echo "Export failed — you may need to export manually."
+    echo "Claude Desktop installed and exported to host desktop."
 
 # Install Codex CLI
 install-codex:
@@ -484,12 +510,22 @@ install-acp:
     echo "ACP adapters installed (claude-code-acp, codex-acp)"
     echo "Note: Gemini has native ACP support via --experimental-acp (no adapter needed)"
 
-# Update all AI agent CLIs and ACP adapters
-update-agents: update-claude update-codex update-gemini update-acp
+# Update all AI agent CLIs, desktop app, and ACP adapters
+update-agents: update-claude update-claude-desktop update-codex update-gemini update-acp
 
 # Update Claude Code
 update-claude:
     curl -fsSL https://claude.ai/install.sh | bash
+
+# Update Claude Desktop
+update-claude-desktop:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ ! -f /run/.containerenv ]]; then
+        echo "Not in a distrobox. Run this inside the home container."
+        exit 0
+    fi
+    sudo dnf upgrade -y claude-desktop
 
 # Update Codex CLI
 update-codex:
