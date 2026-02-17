@@ -66,13 +66,10 @@
           ]))
         ];
 
-        # Game development profile extras.
-        # Keep this focused on heavy, domain-specific tooling that should not
-        # bloat the default daily-driver profile.
+        # Game development profile extras (Nix-only, CLI tools).
+        # GUI apps (godot) and their runtime deps (dotnet-sdk) are installed
+        # via DNF in the Containerfile so they can access host GPU drivers.
         homebaseGamedevExtras = with pkgs; [
-          godot_4        # GDScript projects → `godot`
-          godot_4-mono   # C# projects → `godot-mono`
-          dotnet-sdk_8
         ];
 
         homebaseGamedevPackages = homebaseBasePackages ++ homebaseGamedevExtras;
