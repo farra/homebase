@@ -66,6 +66,9 @@ setopt PUSHD_SILENT         # don't print stack after pushd/popd
 setopt EXTENDED_GLOB        # extended glob patterns (#, ~, ^)
 setopt GLOB_DOTS            # include dotfiles in glob results
 
+# Keymap
+bindkey -e                  # emacs keybindings (explicit, don't rely on $EDITOR heuristic)
+
 # Misc
 setopt INTERACTIVE_COMMENTS # allow comments in interactive shell
 setopt NO_BEEP              # silence
