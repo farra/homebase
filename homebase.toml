@@ -91,10 +91,14 @@ apps = [
   "com.discordapp.Discord",
   "com.slack.Slack",
   # Common apps
+  "com.usebottles.bottles",
   "com.spotify.Client",
   "com.ktechpit.whatsie",
+  # Developer
+  "dev.zed.Zed",
   # Browsers
   "com.brave.Browser",
+  "app.zen_browser.zen",
   # Games (steam is pre-installed on Bazzite)
   "org.prismlauncher.PrismLauncher",
 ]
