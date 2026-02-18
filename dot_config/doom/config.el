@@ -146,7 +146,10 @@
   (require 'cautomaton-capture)
   (require 'forge-backlog)
   (require 'forge-dev-status)
-  (require 'forge-activity))
+  (require 'forge-activity)
+  (require 'cautomaton-worktree))
+
+(after! magit (cautomaton-worktree-init))
 
 ;; J&T Project Elisp
 (use-package! gongfu-mode
@@ -472,6 +475,36 @@ Buffer names are like 'Claude Code Agent @ ProjectName' or 'Claude Code Agent @ 
     t))
 
 (add-hook 'kill-buffer-query-functions #'+agent-shell-confirm-kill)
+
+;; Silent revert when agents are editing files
+;; When an agent-shell process modifies a file that has an open buffer,
+;; Emacs prompts to revert. This blocks the agent until answered.
+;; If a live agent-shell is running in the same project, skip the prompt.
+(defun +agent-shell--in-project-p (file)
+  "Return non-nil if a live agent-shell is running in FILE's project."
+  (when (and file (fboundp 'agent-shell-buffers))
+    (let ((dir (file-name-directory (expand-file-name file))))
+      (seq-some
+       (lambda (buf)
+         (and (buffer-live-p buf)
+              (get-buffer-process buf)
+              (process-live-p (get-buffer-process buf))
+              (let ((agent-dir (expand-file-name
+                                (buffer-local-value 'default-directory buf))))
+                (or (string-prefix-p agent-dir dir)
+                    (string-prefix-p dir agent-dir)))))
+       (agent-shell-buffers)))))
+
+(defun +agent-shell--suppress-supersession (orig-fn filename &rest args)
+  "Skip the supersession prompt when an agent is active in the same project.
+Advises `ask-user-about-supersession-threat'."
+  (if (+agent-shell--in-project-p filename)
+      ;; Return nil to silently proceed (don't signal)
+      nil
+    (apply orig-fn filename args)))
+
+(advice-add 'ask-user-about-supersession-threat
+            :around #'+agent-shell--suppress-supersession)
 
 ;; Keybindings
 ;; NOTE: Leader-based bindings (SPC a) conflict with existing bindings
