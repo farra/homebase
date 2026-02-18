@@ -33,8 +33,10 @@ fi
 # =============================================================================
 # SSH Agent
 # =============================================================================
-if [ -z "$SSH_AUTH_SOCK" ]; then
-    eval "$(ssh-agent -s)" > /dev/null
+# Rely on systemd ssh-agent.service (socket at $XDG_RUNTIME_DIR/ssh-agent.socket)
+# configured via ~/.config/environment.d/ssh-agent.conf
+# On macOS, fall back to the system ssh-agent (launchd sets SSH_AUTH_SOCK)
+if [ -n "$SSH_AUTH_SOCK" ] && ! ssh-add -l &>/dev/null; then
     ssh-add 2>/dev/null
 fi
 
