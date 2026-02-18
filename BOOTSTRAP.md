@@ -34,7 +34,7 @@ The script runs 7 idempotent phases, each guarded by a stamp file in `~/.homebas
 
 **Phase 1: Homebrew** — Installs to `~/.linuxbrew` (no root, no rpm-ostree)
 
-**Phase 2: Host tools** — `brew install chezmoi just direnv git zsh 1password-cli`. Sets zsh as default shell via `chsh` (distrobox inherits host `$SHELL`).
+**Phase 2: Host tools** — Installs formulas declared in `homebase.toml` `[host].tools` (currently `git`, `chezmoi`, `zsh`, `just`, `direnv`, `1password-cli`). Sets zsh as default shell via `chsh` (distrobox inherits host `$SHELL`).
 
 **Phase 3: 1Password** — `op signin` (opens browser for authentication)
 
@@ -116,7 +116,8 @@ echo "<your-gpg-fingerprint>:6:" | gpg --batch --import-ownertrust
 chezmoi init --apply <your-github-user>/homebase
 
 # 6. Remaining Homebrew packages (including Nerd Fonts)
-brew bundle --file=~/.local/share/chezmoi/Brewfile
+~/.local/share/chezmoi/scripts/render-brewfile.sh ~/.local/share/chezmoi/homebase.toml > /tmp/homebase.Brewfile
+brew bundle --file=/tmp/homebase.Brewfile --no-lock --upgrade
 
 # 7. Nix (for project-level shells)
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh

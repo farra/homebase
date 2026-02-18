@@ -71,7 +71,7 @@ Layer 2: Per-project nix flakes (cautomaton-develops, out of scope)
 | `flake.nix` | Nix flake defining all container tools |
 | `images/Containerfile` | Baked distrobox image (fedora-toolbox base + Nix) |
 | `bootstrap/bazzite.sh` | Layer 0 bootstrap (9 idempotent phases) |
-| `Brewfile` | Host-only tools (Homebrew) |
+| `scripts/render-brewfile.sh` | Generates ephemeral Homebrew bundle from `homebase.toml` |
 | `justfile` | Project development commands (image build, flake check) |
 | `dot_homebase/justfile` | User commands (setup, updates, worktrees, distrobox lifecycle) |
 | `dot_zshrc.tmpl` | Shell config (zsh + starship + plugins + aliases) |
@@ -96,16 +96,17 @@ Declares tools per layer. Sections:
 
 ```toml
 [host]        # Homebrew tools for all platforms
-tools = ["git", "chezmoi", "zsh", "just", "direnv"]
+tools = ["git", "chezmoi", "zsh", "just", "direnv", "1password-cli"]
 
 [container]   # Nix flake tools baked into the image
-tools = ["ripgrep", "fd", "fzf", "bat", "eza", "starship", "emacs", ...]
+packages = ["ripgrep", "fd", "fzf", "bat", "eza", "starship", ...]
+include = ["emacs-vterm"]  # special package expressions from flake.nix
 
 [fonts]       # Host-level Nerd Fonts
 nerd-fonts = ["FiraCode", "FiraMono"]
 
 [macos]       # Homebrew casks (macOS only)
-casks = ["emacs", "1password-cli", "font-fira-code-nerd-font", "font-fira-mono-nerd-font"]
+casks = ["emacs", "tailscale", "font-fira-code-nerd-font", "font-fira-mono-nerd-font"]
 
 [flatpaks]    # Host-level desktop apps via Flatpak (Flathub, Bazzite/Linux)
 apps = ["md.obsidian.Obsidian", "com.discordapp.Discord", ...]
@@ -142,7 +143,8 @@ SSH keys are *output* of chezmoi apply (from 1Password templates), not a prerequ
 brew install chezmoi && brew install --cask 1password-cli
 eval "$(op signin)"
 chezmoi init --apply farra/homebase
-brew bundle --file=~/.local/share/chezmoi/Brewfile
+~/.local/share/chezmoi/scripts/render-brewfile.sh ~/.local/share/chezmoi/homebase.toml > /tmp/homebase.Brewfile
+brew bundle --file=/tmp/homebase.Brewfile --no-lock --upgrade
 ```
 
 ## Secrets
@@ -197,7 +199,7 @@ Managed via `homebase` alias: `homebase clone`, `homebase wt`, `homebase wt-rm`,
 When helping with this project:
 
 1. **Prefer editing existing files** — Don't create new config files without discussion
-2. **Keep homebase.toml in sync** — If adding tools, update `homebase.toml`, `flake.nix`, and `dot_zshrc.tmpl` (if alias/init needed)
+2. **Keep homebase.toml in sync** — If adding tools, update `homebase.toml` and `dot_zshrc.tmpl` (if alias/init needed)
 3. **Consider all platforms** — Changes should work on macOS, Bazzite, and WSL
 4. **Respect immutability** — Don't assume root access or system-level changes on Bazzite
 5. **Use the right justfile** — Project dev commands in `./justfile`, user-facing commands in `dot_homebase/justfile`
@@ -206,14 +208,14 @@ When helping with this project:
 ### Common Tasks
 
 **Add a new tool:**
-1. Add to `homebase.toml` `[container]` tools
-2. Add to `flake.nix` homebasePackages
+1. Add to `homebase.toml` `[container]` `packages` (nixpkgs attr names only)
+2. If it's a custom expression, add its name to `[container]` `include` and define it in `flake.nix` `specialIncludes`
 3. If it needs shell init or alias, add to `dot_zshrc.tmpl`
 4. Run `nix flake check`
 
 **Add a host-only tool:**
 1. Add to `homebase.toml` `[host]` tools
-2. Add to `Brewfile`
+2. No checked-in Brewfile required; host commands render an ephemeral Brewfile at runtime
 
 **Add a new Flatpak app:**
 1. Add the Flathub app ID to `homebase.toml` `[flatpaks]` apps

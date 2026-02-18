@@ -26,6 +26,10 @@ GHCR_IMAGE="ghcr.io/farra/homebase:latest"
 
 STAMP_DIR="$HOME/.homebase-bootstrap"
 mkdir -p "$STAMP_DIR"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+BREWFILE_RENDERER="$REPO_ROOT/scripts/render-brewfile.sh"
+HOMEBASE_TOML="$REPO_ROOT/homebase.toml"
 
 info()  { echo -e "\033[1;34m==>\033[0m \033[1m$*\033[0m"; }
 ok()    { echo -e "\033[1;32m  ✓\033[0m $*"; }
@@ -76,8 +80,21 @@ info "Phase 2: Host tools"
 if stamp_check "02-host-tools"; then
     skip "Host tools already installed"
 else
-    # Install packages (|| true: brew returns non-zero on link conflicts)
-    brew install chezmoi just direnv git zsh 1password-cli || true
+    if [[ ! -x "$BREWFILE_RENDERER" ]]; then
+        echo "ERROR: Brewfile renderer not found: $BREWFILE_RENDERER"
+        exit 1
+    fi
+    if [[ ! -f "$HOMEBASE_TOML" ]]; then
+        echo "ERROR: homebase.toml not found: $HOMEBASE_TOML"
+        exit 1
+    fi
+
+    tmp_brewfile="$(mktemp)"
+    trap 'rm -f "$tmp_brewfile"' EXIT
+    "$BREWFILE_RENDERER" "$HOMEBASE_TOML" > "$tmp_brewfile"
+    brew bundle --file="$tmp_brewfile" --no-lock
+    rm -f "$tmp_brewfile"
+    trap - EXIT
 
     # Verify all required tools are actually available
     for cmd in chezmoi just direnv git zsh op; do

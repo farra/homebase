@@ -221,14 +221,14 @@ Dropbox can be installed later (post-bootstrap) when setting up forge — if we 
 
 ---
 
-## 4. Brewfile: Generated or Manual?
+## 4. Homebrew Manifests: Checked-in or Ephemeral?
 
 ### Options
 
-**Generated from homebase.toml:**
+**Generated/ephemeral from homebase.toml:**
 - Single source of truth
-- Need a script to generate
-- Adds build step
+- Runtime generation script
+- No committed manifest drift
 
 **Manual with validation:**
 - Two files to maintain
@@ -237,7 +237,7 @@ Dropbox can be installed later (post-bootstrap) when setting up forge — if we 
 
 ### Recommendation
 
-**Manual with validation.** The tool lists are small and change rarely. Over-engineering.
+**Generated/ephemeral.** Homebrew actions render bundle data from `homebase.toml` at runtime, so there is no second host package list to keep in sync.
 
 ---
 
@@ -355,7 +355,7 @@ Is this worth the switch from current bash setup?
 | Bootstrap approach | chezmoi-native (Option D) |
 | Password manager | 1Password |
 | SSH key storage | 1Password (shared key: `cautomaton-ssh-key`) |
-| Brewfile | Manual with validation |
+| Homebrew manifest | Ephemeral render from homebase.toml |
 | Emacs on macOS | Homebrew Cask |
 | Distrobox image | Slim (bootstrap on first run) |
 | Forge clone | Document, don't automate |

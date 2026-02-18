@@ -6,13 +6,13 @@ I bounce around a lot, between machines, between operating systems (mac, linux, 
 
 Homebase uses a layered approach (see below). The core is the host configuration, primarily with Homebrew (its one few package managers that really does live everywhere). From there, we leverage a potent mix of `chezmoi`, `nix`, `direnv`, `distrobox` to create a consistent home development environment. The final layer is [cautomaton-develops](https://github.com/farra/cautomaton-develops), a nix based system for managing project-level dependencies. It's my own take on `devbox` or similar systems. It also pairs with [agentboxes](https://github.com/farra/agentboxes), an experiment I'm running to manage AI agents and orchestrators in containers and distroboxes.
 
-I'm also stealing a git worktree idea of [schmux](https://github.com/sergeknystautas/schmux) for my local `~/dev` directory, allowing for faster checkouts of branches. 
+I'm also stealing a git worktree idea of [schmux](https://github.com/sergeknystautas/schmux) for my local `~/dev` directory, allowing for faster checkouts of branches.
 
 The heart of everything is still [(doom) emacs](https://github.com/doomemacs/doomemacs). It's ultimately where I live. You can see my emacs config here, particularly how I'm using [agent-shell](https://github.com/xenodium/agent-shell) and other tools for coding.
 
 Homebase downloads my private `forge` repo, my digital "second brain" built on years of **`org-mode` + Obsidian vault** files. If you're not doing something similar, I recommend looking into Obsidian, particularly with how well it pairs with tools like Claude. Of course, if you _really_ want to improve your life, learn emacs and org-mode.
 
-The philosophy here is clear layers, clear isolation, and secure repeatabilty. It may seem like a lot, but this keeps me sane when I'm quickly moving between different projects, testing out ideas, and doing so in a way that doesn't clutter up my machine. 
+The philosophy here is clear layers, clear isolation, and secure repeatabilty. It may seem like a lot, but this keeps me sane when I'm quickly moving between different projects, testing out ideas, and doing so in a way that doesn't clutter up my machine.
 
 This repo is my personal config — it's not designed to be plug-and-play for someone else. But if you're interested in the patterns (immutable Linux + distrobox, chezmoi + 1Password, worktree-per-agent workflows), feel free to poke around and steal ideas.
 
@@ -66,7 +66,8 @@ op read "op://Private/<your-gpg-key-item>/homebase-authinfo-public.asc" | gpg --
 op read "op://Private/<your-gpg-key-item>/homebase-authinfo-secret.asc" | gpg --batch --import
 echo "<your-gpg-fingerprint>:6:" | gpg --batch --import-ownertrust
 chezmoi init --apply <your-github-user>/homebase
-brew bundle --file=~/.local/share/chezmoi/Brewfile
+~/.local/share/chezmoi/scripts/render-brewfile.sh ~/.local/share/chezmoi/homebase.toml > /tmp/homebase.Brewfile
+brew bundle --file=/tmp/homebase.Brewfile --no-lock --upgrade
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh
 ```
 
@@ -181,7 +182,7 @@ Recommended pattern for multi-machine portability:
 ├── images/Containerfile          # Baked distrobox image (fedora-toolbox base)
 ├── bootstrap/bazzite.sh          # Layer 0 bootstrap (7 phases, idempotent)
 ├── homebase.toml                 # Tool definitions (source of truth)
-├── Brewfile                      # Host-only tools (Homebrew)
+├── scripts/render-brewfile.sh    # Generate ephemeral Brewfile from homebase.toml
 ├── justfile                      # Project development commands
 ├── secretspec.toml               # Runtime secrets declaration
 ├── .chezmoi.toml.tmpl            # chezmoi config

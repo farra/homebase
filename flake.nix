@@ -10,61 +10,32 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+        deps = builtins.fromTOML (builtins.readFile ./homebase.toml);
+
+        resolvePackage = name:
+          if builtins.hasAttr name pkgs then
+            pkgs.${name}
+          else
+            throw "Unknown nixpkgs package in [container].packages: ${name}";
+
+        specialIncludes = {
+          emacs-vterm = pkgs.emacs.pkgs.withPackages (epkgs: with epkgs; [
+            vterm
+          ]);
+        };
+
+        resolveInclude = name:
+          if builtins.hasAttr name specialIncludes then
+            specialIncludes.${name}
+          else
+            throw "Unknown include in [container].include: ${name}";
 
         # Shared base tools for all homebase container profiles.
         # Language runtimes (python, node, rust, go) are per-project via
         # cautomaton-develops nix develop shells, not here.
-        homebaseBasePackages = with pkgs; [
-          # Core
-          git
-          zsh
-          chezmoi
-          just
-          direnv
-
-          # Search and navigation
-          ripgrep
-          fd
-          fzf
-          zoxide
-          tree
-
-          # Modern CLI tools
-          bat
-          eza
-          jq
-          yq-go
-          delta
-          glow
-          tealdeer
-
-          # Git
-          gh
-          lazygit
-
-          # Shell
-          starship
-          atuin
-          shellcheck
-          tmux
-          nushell
-          zsh-autosuggestions
-          zsh-syntax-highlighting
-
-          # System essentials
-          curl
-          wget
-          watch
-          less
-          file
-          lsof
-          bottom
-
-          # Editor — Emacs with vterm native module for Doom Emacs
-          (emacs.pkgs.withPackages (epkgs: with epkgs; [
-            vterm
-          ]))
-        ];
+        homebaseBasePackages =
+          map resolvePackage (deps.container.packages or [])
+          ++ map resolveInclude (deps.container.include or []);
 
         # Game development profile extras (Nix-only, CLI tools).
         # GUI apps (godot) and their runtime deps (dotnet-sdk) are installed

@@ -6,21 +6,21 @@
 
 [host]
 # Minimal tools for the host OS (Homebrew)
-tools = ["git", "chezmoi", "zsh", "just", "direnv", "node"]
-# node: provides npm for AI agent CLIs (claude-code, ACP adapters)
-# 1password-cli installed separately (cask on macOS, brew on Linux)
+tools = ["git", "chezmoi", "zsh", "just", "direnv", "1password-cli"]
 # tailscale: host-level VPN mesh (pre-installed on Bazzite, cask on macOS)
 # Configured manually after bootstrap (tailscale up)
 
 [container]
 # All dev tools baked into the distrobox image (Nix flake)
-tools = [
+# Use nixpkgs attribute names directly (no aliases here).
+packages = [
   # Core
   "git",
   "zsh",
   "chezmoi",
   "just",
   "direnv",
+  "nodejs_22",  # npm for AI agent CLIs (claude-code, ACP adapters)
   # Search and navigation
   "ripgrep",
   "fd",
@@ -31,7 +31,7 @@ tools = [
   "bat",
   "eza",
   "jq",
-  "yq",
+  "yq-go",
   "delta",
   "glow",
   "tealdeer",
@@ -54,9 +54,10 @@ tools = [
   "file",
   "lsof",
   "bottom",
-  # Editor
-  "emacs",  # with vterm via emacsWithPackages
 ]
+# Special package expressions defined in flake.nix.
+# Use these for custom builds that aren't plain nixpkgs attrs.
+include = ["emacs-vterm"]
 # AI agents installed separately via ~/.homebase/justfile (not baked):
 # claude-code, codex, gemini-cli
 
@@ -83,7 +84,7 @@ nerd-fonts = ["FiraCode", "FiraMono"]
 
 [macos]
 # Homebrew casks (GUI apps, macOS only)
-casks = ["emacs", "1password-cli", "tailscale", "font-fira-code-nerd-font", "font-fira-mono-nerd-font"]
+casks = ["emacs", "tailscale", "font-fira-code-nerd-font", "font-fira-mono-nerd-font"]
 
 [flatpaks]
 # Host-level desktop apps via Flatpak (Flathub)
