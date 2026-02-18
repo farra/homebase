@@ -96,6 +96,12 @@ else
     rm -f "$tmp_brewfile"
     trap - EXIT
 
+    # 1password-cli is a cask on all platforms (not a formula), so it can't
+    # go through the rendered Brewfile. Install it directly.
+    if ! command -v op &>/dev/null; then
+        brew install --cask 1password-cli
+    fi
+
     # Verify all required tools are actually available
     for cmd in chezmoi just direnv git zsh op; do
         if ! command -v "$cmd" &>/dev/null; then

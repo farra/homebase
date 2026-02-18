@@ -6,7 +6,9 @@
 
 [host]
 # Minimal tools for the host OS (Homebrew)
-tools = ["git", "chezmoi", "zsh", "just", "direnv", "1password-cli"]
+tools = ["git", "chezmoi", "zsh", "just", "direnv", "node"]
+# node: provides npm for AI agent CLIs installed at host level (codex, ACP adapters)
+# 1password-cli: installed as cask in platform bootstrap scripts (not a brew formula)
 # tailscale: host-level VPN mesh (pre-installed on Bazzite, cask on macOS)
 # Configured manually after bootstrap (tailscale up)
 
@@ -20,7 +22,6 @@ packages = [
   "chezmoi",
   "just",
   "direnv",
-  "nodejs_22",  # npm for AI agent CLIs (claude-code, ACP adapters)
   # Search and navigation
   "ripgrep",
   "fd",
@@ -58,8 +59,9 @@ packages = [
 # Special package expressions defined in flake.nix.
 # Use these for custom builds that aren't plain nixpkgs attrs.
 include = ["emacs-vterm"]
-# AI agents installed separately via ~/.homebase/justfile (not baked):
-# claude-code, codex, gemini-cli
+# AI agent CLIs are host-level tools (brew/npm/curl), not baked into the
+# container. They use host brew's node/npm. Managed via ~/.homebase/justfile:
+# claude-code, codex, gemini-cli, ACP adapters
 
 [profiles.base]
 # Default daily-driver profile.

@@ -241,7 +241,61 @@ Dropbox can be installed later (post-bootstrap) when setting up forge — if we 
 
 ---
 
-## 5. Emacs on macOS
+## 5. AI Agent CLIs: Host or Container? — DECIDED
+
+### Context
+
+Agent CLIs (claude-code, codex, gemini-cli) and their protocol adapters (ACP) need to be
+installed somewhere. The distrobox container shares `$HOME` with the host, and the host's
+Homebrew at `/home/linuxbrew/.linuxbrew` is visible from inside all containers via bind mount.
+
+### Options Considered
+
+**Container-only (nix):**
+- Agents baked into the container image or installed via `nix profile install`
+- Clean isolation — host stays thin
+- Problem: Agent CLIs release multiple times per week. nixpkgs lags days to weeks behind.
+  Claude Code, Codex, and Gemini all support self-update; nix store paths are immutable and
+  break self-update. Rebuilding the container image for every agent update is impractical.
+
+**Container-only (brew inside container):**
+- `brew install` from inside the container writes to host brew anyway (`$HOME` is shared)
+- No actual isolation — just the illusion of it. Multiple containers would conflict.
+
+**Host-level (brew/npm/curl):**
+- Agents installed via their native mechanisms on the host
+- Shared across all containers (same brew, same `~/.local/bin`)
+- Self-update works naturally
+- Pragmatic: same reasoning as flatpaks — some applications belong at the host level
+
+### Decision
+
+**Host-level.** Agent CLIs are host-level tools, same as flatpak desktop apps.
+
+- `claude-code`: curl installer → `~/.local/bin` (self-updates)
+- `codex`: `brew install codex` (cask)
+- `gemini-cli`: `brew install gemini-cli` (formula)
+- ACP adapters: `npm install -g` (uses host node/npm)
+- `node`: in `[host].tools` to provide npm for ACP adapter installs
+
+Managed via `homebase install-agents` / `homebase update-agents`. No container guards.
+
+**Exception:** Claude Desktop is installed via DNF inside the distrobox (it's a Linux desktop
+app that needs `distrobox-export` to appear in the host's app launcher). It keeps its
+container guard.
+
+### Rationale
+
+- Agents update too fast for nix to be practical
+- Self-update is a feature, not a bug — agents know how to update themselves
+- brew is already shared across host and containers; making this explicit removes confusion
+- Matches the flatpak pattern: host-level applications, container-level dev tools
+- The host layer should be thin but not artificially starved — if something naturally
+  belongs at the host level, put it there
+
+---
+
+## 6. Emacs on macOS
 
 ### Options
 
@@ -254,7 +308,7 @@ Dropbox can be installed later (post-bootstrap) when setting up forge — if we 
 
 ---
 
-## 6. Slim vs Full Distrobox Image
+## 7. Slim vs Full Distrobox Image
 
 ### Slim (current implementation)
 
@@ -283,7 +337,7 @@ Dropbox can be installed later (post-bootstrap) when setting up forge — if we 
 
 ---
 
-## 7. Forge Clone: Part of Bootstrap?
+## 8. Forge Clone: Part of Bootstrap?
 
 ### Question
 
@@ -301,7 +355,7 @@ Should `git clone farra/forge ~/forge` be automated, or left as a manual post-bo
 
 ---
 
-## 8. Windows Native (No WSL)
+## 9. Windows Native (No WSL)
 
 ### Question
 
@@ -319,7 +373,7 @@ If WSL is unavailable (corporate lockdown), is there a fallback?
 
 ---
 
-## 9. Shell: zsh vs bash
+## 10. Shell: zsh vs bash
 
 ### Current Plan
 
@@ -356,6 +410,7 @@ Is this worth the switch from current bash setup?
 | Password manager | 1Password |
 | SSH key storage | 1Password (shared key: `cautomaton-ssh-key`) |
 | Homebrew manifest | Ephemeral render from homebase.toml |
+| AI agent CLIs | Host-level (brew/npm/curl), not container |
 | Emacs on macOS | Homebrew Cask |
 | Distrobox image | Slim (bootstrap on first run) |
 | Forge clone | Document, don't automate |

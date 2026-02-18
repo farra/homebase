@@ -184,17 +184,10 @@ wts:
 
 # ── Updates ──────────────────────────────────────────────────────────────
 
-# Update everything (dotfiles + host tools + flatpaks, and agents in distrobox)
-update: update-dotfiles update-host update-flatpaks
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [[ -f /run/.containerenv ]]; then
-        just update-agents
-    else
-        echo "On host — skipping agent updates (run inside distrobox)."
-    fi
-    echo ""
-    echo "All updates complete."
+# Update everything (dotfiles + host tools + flatpaks + agents)
+update: update-dotfiles update-host update-flatpaks update-agents
+    @echo ""
+    @echo "All updates complete."
 
 # Pull and apply latest dotfiles
 update-dotfiles:
@@ -454,28 +447,14 @@ godot-templates:
 # ── AI Agents ────────────────────────────────────────────────────────────
 
 # Install all AI agent CLIs, desktop app, and ACP adapters
-install-agents:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [[ ! -f /run/.containerenv ]]; then
-        echo "Not in a distrobox — skipping agent installs."
-        echo "Run this inside the home container."
-        exit 0
-    fi
-    just install-claude
-    just install-claude-desktop
-    just install-codex
-    just install-gemini
-    just install-acp
+# Agents are host-level tools (brew/npm/curl) — shared across all containers.
+# Claude Desktop is the exception (DNF inside distrobox, exported to host desktop).
+install-agents: install-claude install-claude-desktop install-codex install-gemini install-acp
 
 # Install Claude Code
 install-claude:
     #!/usr/bin/env bash
     set -euo pipefail
-    if [[ ! -f /run/.containerenv ]]; then
-        echo "Not in a distrobox — skipping Claude Code install."
-        exit 0
-    fi
     if command -v claude &>/dev/null; then
         echo "Claude Code already installed: $(claude --version 2>/dev/null || echo 'unknown version')"
         echo "Run 'just update-claude' to update"
@@ -515,10 +494,6 @@ install-claude-desktop:
 install-codex:
     #!/usr/bin/env bash
     set -euo pipefail
-    if [[ ! -f /run/.containerenv ]]; then
-        echo "Not in a distrobox — skipping Codex install."
-        exit 0
-    fi
     if command -v codex &>/dev/null; then
         echo "Codex already installed: $(codex --version 2>/dev/null || echo 'unknown version')"
         echo "Run 'just update-codex' to update"
@@ -532,10 +507,6 @@ install-codex:
 install-gemini:
     #!/usr/bin/env bash
     set -euo pipefail
-    if [[ ! -f /run/.containerenv ]]; then
-        echo "Not in a distrobox — skipping Gemini install."
-        exit 0
-    fi
     if command -v gemini &>/dev/null; then
         echo "Gemini CLI already installed: $(gemini --version 2>/dev/null || echo 'unknown version')"
         echo "Run 'just update-gemini' to update"
@@ -549,10 +520,6 @@ install-gemini:
 install-acp:
     #!/usr/bin/env bash
     set -euo pipefail
-    if [[ ! -f /run/.containerenv ]]; then
-        echo "Not in a distrobox — skipping ACP adapter install."
-        exit 0
-    fi
     echo "Installing ACP adapters for agent-shell..."
     npm install -g @zed-industries/claude-code-acp
     npm install -g @zed-industries/codex-acp
@@ -560,28 +527,10 @@ install-acp:
     echo "Note: Gemini has native ACP support via --experimental-acp (no adapter needed)"
 
 # Update all AI agent CLIs, desktop app, and ACP adapters
-update-agents:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [[ ! -f /run/.containerenv ]]; then
-        echo "Not in a distrobox — skipping agent updates."
-        echo "Run this inside the home container."
-        exit 0
-    fi
-    just update-claude
-    just update-claude-desktop
-    just update-codex
-    just update-gemini
-    just update-acp
+update-agents: update-claude update-claude-desktop update-codex update-gemini update-acp
 
 # Update Claude Code
 update-claude:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [[ ! -f /run/.containerenv ]]; then
-        echo "Not in a distrobox — skipping Claude Code update."
-        exit 0
-    fi
     curl -fsSL https://claude.ai/install.sh | bash
 
 # Update Claude Desktop
@@ -596,31 +545,13 @@ update-claude-desktop:
 
 # Update Codex CLI
 update-codex:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [[ ! -f /run/.containerenv ]]; then
-        echo "Not in a distrobox — skipping Codex update."
-        exit 0
-    fi
     brew upgrade codex || brew install codex
 
 # Update Gemini CLI
 update-gemini:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [[ ! -f /run/.containerenv ]]; then
-        echo "Not in a distrobox — skipping Gemini update."
-        exit 0
-    fi
     brew upgrade gemini-cli || brew install gemini-cli
 
 # Update ACP adapters
 update-acp:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [[ ! -f /run/.containerenv ]]; then
-        echo "Not in a distrobox. Run this inside the home container."
-        exit 0
-    fi
     npm install -g @zed-industries/claude-code-acp
     npm install -g @zed-industries/codex-acp

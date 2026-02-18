@@ -96,7 +96,7 @@ Declares tools per layer. Sections:
 
 ```toml
 [host]        # Homebrew tools for all platforms
-tools = ["git", "chezmoi", "zsh", "just", "direnv", "1password-cli"]
+tools = ["git", "chezmoi", "zsh", "just", "direnv", "node"]
 
 [container]   # Nix flake tools baked into the image
 packages = ["ripgrep", "fd", "fzf", "bat", "eza", "starship", ...]
@@ -214,8 +214,9 @@ When helping with this project:
 4. Run `nix flake check`
 
 **Add a host-only tool:**
-1. Add to `homebase.toml` `[host]` tools
+1. Add to `homebase.toml` `[host]` tools (must be a brew formula, not a cask)
 2. No checked-in Brewfile required; host commands render an ephemeral Brewfile at runtime
+3. Note: `1password-cli` is a cask and handled directly in bootstrap scripts, not via `[host].tools`
 
 **Add a new Flatpak app:**
 1. Add the Flathub app ID to `homebase.toml` `[flatpaks]` apps
