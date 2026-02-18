@@ -7,6 +7,9 @@ Thumbs.db
 \#*\#
 .#*
 
+# Agent shell local state
+.agent-shell/
+
 # Build artifacts
 result
 result-*
