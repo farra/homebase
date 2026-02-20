@@ -243,13 +243,17 @@ if command -v glow &> /dev/null; then
 fi
 
 # Host tools (via distrobox-host-exec, only inside containers)
-# These are host-level tools that need kernel/hardware/runtime access but are
-# useful to call from a dev shell. See Bazzite DX for the full host toolset.
+# Wrapper scripts in ~/.local/bin so they work from just, make, scripts, etc.
+# — not just interactive shells like aliases would.
 if [ -f /run/.containerenv ] && command -v distrobox-host-exec &> /dev/null; then
-    alias podman='distrobox-host-exec podman'
-    alias docker='distrobox-host-exec docker'
-    alias systemctl='distrobox-host-exec systemctl'
-    alias flatpak='distrobox-host-exec flatpak'
+    for _hcmd in podman docker systemctl flatpak; do
+        _wrapper="$HOME/.local/bin/$_hcmd"
+        if [ ! -x "$_wrapper" ]; then
+            printf '#!/bin/sh\nexec distrobox-host-exec %s "$@"\n' "$_hcmd" > "$_wrapper"
+            chmod +x "$_wrapper"
+        fi
+    done
+    unset _hcmd _wrapper
 fi
 
 # Forge
