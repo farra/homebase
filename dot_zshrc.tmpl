@@ -242,6 +242,16 @@ if command -v glow &> /dev/null; then
     alias md='glow'
 fi
 
+# Host tools (via distrobox-host-exec, only inside containers)
+# These are host-level tools that need kernel/hardware/runtime access but are
+# useful to call from a dev shell. See Bazzite DX for the full host toolset.
+if [ -f /run/.containerenv ] && command -v distrobox-host-exec &> /dev/null; then
+    alias podman='distrobox-host-exec podman'
+    alias docker='distrobox-host-exec docker'
+    alias systemctl='distrobox-host-exec systemctl'
+    alias flatpak='distrobox-host-exec flatpak'
+fi
+
 # Forge
 alias forge='cd ~/forge'
 
