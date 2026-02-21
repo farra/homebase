@@ -18,8 +18,13 @@
           else
             throw "Unknown nixpkgs package in [container].packages: ${name}";
 
+        # Emacs backend per platform:
+        # Linux: emacs-pgtk for native Wayland support (HiDPI scaling)
+        # macOS: standard emacs (Cocoa/NS backend)
+        emacsPackage = if pkgs.stdenv.isLinux then pkgs.emacs-pgtk else pkgs.emacs;
+
         specialIncludes = {
-          emacs-vterm = pkgs.emacs.pkgs.withPackages (epkgs: with epkgs; [
+          emacs-vterm = emacsPackage.pkgs.withPackages (epkgs: with epkgs; [
             vterm
           ]);
         };
