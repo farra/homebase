@@ -55,6 +55,12 @@ export PATH="$HOME/.npm-global/bin:$PATH"
 # Nix profile (if using nix profile install)
 export PATH="$HOME/.nix-profile/bin:$PATH"
 
+# Distrobox host command wrappers (container-only)
+# Proxies podman, docker, flatpak, systemctl to the host via distrobox-host-exec
+if [[ -f /run/.containerenv ]]; then
+    export PATH="$HOME/.local/lib/distrobox-host-wrappers:$PATH"
+fi
+
 # =============================================================================
 # Zsh options
 # =============================================================================
@@ -240,20 +246,6 @@ fi
 # Markdown preview
 if command -v glow &> /dev/null; then
     alias md='glow'
-fi
-
-# Host tools (via distrobox-host-exec, only inside containers)
-# Wrapper scripts in ~/.local/bin so they work from just, make, scripts, etc.
-# — not just interactive shells like aliases would.
-if [ -f /run/.containerenv ] && command -v distrobox-host-exec &> /dev/null; then
-    for _hcmd in podman docker systemctl flatpak; do
-        _wrapper="$HOME/.local/bin/$_hcmd"
-        if [ ! -x "$_wrapper" ]; then
-            printf '#!/bin/sh\nexec distrobox-host-exec %s "$@"\n' "$_hcmd" > "$_wrapper"
-            chmod +x "$_wrapper"
-        fi
-    done
-    unset _hcmd _wrapper
 fi
 
 # Forge
