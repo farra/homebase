@@ -241,6 +241,28 @@ which emacs rg fd fzf bat starship
 - Check chezmoi: `chezmoi diff`
 - Check 1Password: `op account list`
 
+## Design Doc Workflow
+
+This project uses design docs for task management. Design docs live in `docs/design/`.
+
+### Key Files
+- `backlog.org` - Working surface for active tasks
+- `docs/design/*.org` - Design documents (source of truth)
+- `README.org` - Project config (prefix: HB, categories, statuses)
+- `org-setup.org` - Shared org-mode configuration
+
+### Workflow
+1. Create design docs with `/backlog:new-design-doc`
+2. Queue tasks with `/backlog:task-queue <id>`
+3. Start work with `/backlog:task-start <id>`
+4. Complete with `/backlog:task-complete <id>`
+
+### Task ID Format
+`[HB-NNN-XX]` where:
+- HB = project prefix
+- NNN = design doc number
+- XX = task sequence
+
 ## Related Projects
 
 | Project | Relationship |

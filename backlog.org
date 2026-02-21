@@ -1,0 +1,249 @@
+#+TITLE: HB Backlog
+#+SETUPFILE: ./org-setup.org
+
+* Current WIP
+
+Active tasks checked out from design docs.
+
+** Active
+
+*** TODO chezmoi files out of sync                                    :p2:hygiene:
+:PROPERTIES:
+:EFFORT: 0:15
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+chezmoi reports two files modified but not synced:
+- =.claude/plugins/known_marketplaces.json=
+- =.config/git/ignore=
+
+Decide whether to =chezmoi apply= to overwrite local, =chezmoi add= to capture local changes, or add to =.chezmoiignore=.
+
+*** TODO Fix Doom init.el typo: +onssave -> +onsave                   :p1:hygiene:
+:PROPERTIES:
+:EFFORT: 0:15
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+In =dot_config/doom/init.el=, line 59 has =(format +onssave)= which should be =(format +onsave)=.
+
+*** TODO Remove hardcoded /home/jaaron paths in config.el             :p1:hygiene:
+:PROPERTIES:
+:EFFORT: 0:30
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+=dot_config/doom/config.el= has hardcoded absolute paths:
+- =/home/jaaron/dev/ref/acp.el=
+- =/home/jaaron/dev/ref/agent-shell=
+
+These should use =~= or =$HOME= expansion instead. They're guarded with =file-directory-p= so they fail gracefully, but won't work for other usernames or machines.
+
+*** TODO Configure secretspec provider                                :p2:infra:
+:PROPERTIES:
+:EFFORT: 1:00
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+=secretspec.toml= declares secrets (ANTHROPIC_API_KEY, OPENAI_API_KEY, GITHUB_TOKEN, PULUMI_ACCESS_TOKEN) but has no =[providers]= section configured. Need to set up 1Password as the provider for runtime secrets. Also =secretspec= is not installed as a tool anywhere.
+
+*** TODO Add fzf Homebrew fallback path in dot_zshrc.tmpl             :p2:infra:
+:PROPERTIES:
+:EFFORT: 0:30
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+fzf keybinding sourcing in =dot_zshrc.tmpl= checks Nix profile and =/usr/share/fzf/= but has no fallback for Homebrew's fzf path (e.g. =~/.linuxbrew/opt/fzf/shell/= or =/opt/homebrew/opt/fzf/shell/=). Matters for macOS native usage.
+
+*** TODO Add trusted-users to Nix config in Containerfile              :p1:infra:
+:PROPERTIES:
+:EFFORT: 0:15
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+User is not trusted by the Nix daemon (=nix store info= shows =Trusted: 0=).
+=/etc/nix/nix.conf= has no =trusted-users= setting. Add to =nix.custom.conf=
+in the Containerfile:
+
+#+begin_example
+trusted-users = root @wheel
+#+end_example
+
+User =jaaron= is in the =wheel= group. Without this, project-level flake
+substituter configs are ignored and some operations may be slower.
+
+*** TODO Start nix-daemon in distrobox init-hooks                      :p1:infra:
+:PROPERTIES:
+:EFFORT: 0:30
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+The Containerfile uses =--init none= so no systemd manages the daemon.
+Currently the daemon auto-starts via =sudo= on the first nix command in each
+session. Multiple terminal sessions can race to start the daemon, causing
+transient =SQLite database is busy= warnings.
+
+Start the daemon explicitly during distrobox creation via =--init-hooks= or
+early in the shell profile to avoid startup races and concurrent DB contention.
+
+*** TODO Rebuild image with emacs-pgtk and revert font size hack      :p1:infra:
+:PROPERTIES:
+:EFFORT: 1:00
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+=flake.nix= already updated to use =emacs-pgtk= on Linux (native Wayland).
+Still need to:
+
+1. Rebuild the distrobox image (=just build-image= or push to trigger CI)
+2. Recreate the distrobox container with the new image
+3. Revert =~/.config/doom/config.el= font sizes back to 18 (or =chezmoi apply=)
+   - =doom-font= currently hacked to size 36 for X11 HiDPI workaround
+   - =doom-symbol-font= also bumped to 36
+   - Chezmoi source (=dot_config/doom/config.el=) already has the correct size 18
+4. Verify Emacs renders at correct scale on Gnome Wayland
+
+** Blocked
+
+** Up Next
+
+*** TODO Create macOS bootstrap script                                :p2:infra:
+:PROPERTIES:
+:EFFORT: 4:00
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+Currently macOS bootstrap is manual steps in BOOTSTRAP.md. Need a =bootstrap/macos.sh= equivalent to the Bazzite script.
+
+*** TODO Create WSL bootstrap script                                  :p2:infra:
+:PROPERTIES:
+:EFFORT: 4:00
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+WSL bootstrap is not yet implemented. Should follow the same pattern as =bootstrap/bazzite.sh= with idempotent phases and stamp files.
+
+*** TODO Verify Emacs on macOS uses Cocoa/NS backend (not PGTK)       :p2:infra:
+:PROPERTIES:
+:EFFORT: 0:30
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+=flake.nix= now conditionally selects =emacs-pgtk= on Linux and =emacs= on macOS.
+The default =emacs= from nixpkgs on Darwin should build with the native Cocoa/NS
+backend which handles Retina scaling natively. Verify this works correctly when
+macOS bootstrap is tested — the NS backend, font rendering, and HiDPI scaling
+should all work out of the box. If not, may need =emacs-macport= or the Homebrew
+Cask =emacs-plus= instead of the Nix package.
+
+*** TODO Resolve gh CLI git_protocol inconsistency                    :p2:hygiene:
+:PROPERTIES:
+:EFFORT: 0:15
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+=dot_config/gh/config.yml= uses =git_protocol: https= which conflicts with the SSH-first approach used elsewhere (=.chezmoiexternal.toml=, post-bootstrap chezmoi remote). Consider switching to =git_protocol: ssh=.
+
+*** TODO Test bootstrap on clean machines                             :p0:infra:
+:PROPERTIES:
+:EFFORT: 8:00
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+BOOTSTRAP.md notes the full flow is untested on fresh Bazzite, WSL, or macOS installs. This is the primary outstanding risk for the project.
+
+*** TODO Resolve Dropbox / forge vault question                       :p2:infra:
+:PROPERTIES:
+:EFFORT: 2:00
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+DECISIONS.md has an unresolved question about Dropbox on Bazzite for the forge vault. Currently forge clones via SSH from GitHub, but any Dropbox vault dependency would be a manual step not captured in bootstrap.
+
+* Version Milestones
+
+Quick links to version-specific work:
+
+# - [[file:docs/design/XXX-milestone.org][XXX - Milestone Name]] - description
+
+* About This File
+
+This is the *working surface* for development.
+
+*Design docs* (=docs/design/*.org=) are the canonical archive.
+*This file* is where active work gets tracked.
+
+** Workflow
+
+1. *Queue*: Add task to Active with link property (=:DESIGN:=, =:GITHUB:=, etc.)
+2. *Work*: Add progress notes, update =:HANDOFF:= for session continuity
+3. *Complete*: Reconcile to source, remove from here
+
+** Task Format
+
+#+begin_example
+*** TODO [HB-NNN-XX] Task title
+:PROPERTIES:
+:DESIGN: [[file:docs/design/NNN-doc.org::*Tasks][NNN Tasks]]
+:EFFORT: M
+:HANDOFF:
+:WORKED_BY:
+:END:
+
+[YYYY-MM-DD] Progress notes here.
+#+end_example
+
+** Link Properties (all optional)
+
+- =:DESIGN:= - Link to design doc task definition
+- =:CLAUDE_TASK:= - Link to Claude Task for agent coordination
+- =:GITHUB:= - Link to GitHub issue
+- =:BEAD:= - Link to Bead reference
+
+** Metadata Properties
+
+- =:HANDOFF:= - Notes for next session (what to try, where stuck)
+- =:WORKED_BY:= - Who has worked on this (claude-code, human)
+
+* Quick Reference
+
+| Status   | Meaning                              |
+|----------+--------------------------------------|
+| Draft    | Under development, not ready         |
+| Review   | Ready for feedback                   |
+| Accepted | Approved, ready to implement         |
+| Active   | Implementation in progress           |
+| Complete | Fully implemented and verified       |
+| Archived | No longer active (rejected/obsolete) |
+
+| Task State | Key | Meaning             |
+|------------+-----+---------------------|
+| TODO       | t   | Not started         |
+| WIP        | w   | Work in progress    |
+| HOLD       | h   | Blocked or deferred |
+| DONE       | d   | Completed           |
+
+| Question | Key | Meaning                    |
+|----------+-----+----------------------------|
+| OPEN     | o   | Unresolved                 |
+| DECIDED  | d   | Resolved (check :DECIDED:) |
+
+* File Index
+
+- [[file:docs/design/README.org][Design Docs Index]] - Full listing of all design documents
+- [[file:org-setup.org][org-setup.org]] - Shared org-mode configuration
+- [[file:README.org][README.org]] - Project config (prefix, categories, statuses)

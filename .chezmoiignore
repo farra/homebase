@@ -15,8 +15,15 @@ justfile
 flake.nix
 flake.lock
 
+# Backlog and design docs
+README.org
+CHANGELOG.md
+backlog.org
+org-setup.org
+
 # Directories
 images
 bootstrap
 scripts
+docs
 .github

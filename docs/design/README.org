@@ -1,0 +1,60 @@
+#+TITLE: Design Documents
+#+SETUPFILE: ../../org-setup.org
+
+* Overview
+
+This directory contains design documents following an RFC/RFD pattern.
+Each document captures a decision, its rationale, and implementation tasks.
+
+* Document Status
+
+| Status   | Meaning                                          |
+|----------+--------------------------------------------------|
+| Draft    | Under development, not ready for review          |
+| Review   | Ready for feedback                               |
+| Accepted | Approved, ready to implement                     |
+| Active   | Implementation in progress, some tasks complete  |
+| Complete | Fully implemented and verified                   |
+| Living   | Ongoing reference, updated as system evolves     |
+| Archived | No longer active (rejected, obsolete, abandoned) |
+
+* Documents
+
+| Doc | Title    | Status |
+|-----+----------+--------|
+| 000 | [[file:000-template.org][Template]] | N/A    |
+
+* Elisp Setup
+:PROPERTIES:
+:header-args:elisp: :results silent
+:END:
+
+Load the workflow commands. Evaluate this block first with =C-c C-c=:
+
+#+begin_src elisp
+;; Load workflow-commands.el from project elisp directory
+(let ((elisp-dir (expand-file-name "../../elisp"
+                                   (file-name-directory (buffer-file-name)))))
+  (if (file-exists-p (expand-file-name "workflow-commands.el" elisp-dir))
+      (progn
+        (add-to-list 'load-path elisp-dir)
+        (require 'workflow-commands)
+        (message "Loaded backlog/ commands from %s" elisp-dir))
+    (user-error "workflow-commands.el not found in %s" elisp-dir)))
+#+end_src
+
+** Available Commands
+
+After loading, these commands are available:
+
+| Command                          | Description                             |
+|----------------------------------+-----------------------------------------|
+| =M-x backlog/design-sync-status=   | Update table statuses from actual files |
+| =M-x backlog/design-stale-check=   | Find where README ≠ actual status       |
+| =M-x backlog/design-verify-links=  | Ensure all linked files exist           |
+| =M-x backlog/design-find-unlisted= | Find .org files not in this index       |
+| =M-x backlog/design-goto-doc=      | Jump to a doc by its number             |
+| =M-x backlog/design-next-number=   | Get next available document number      |
+| =M-x backlog/design-status-report= | Show count of docs by status            |
+| =M-x backlog/design-category-report= | Show count of docs by category        |
+| =M-x backlog/task-queue=           | Queue task at point into backlog.org    |
