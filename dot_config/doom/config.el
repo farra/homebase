@@ -163,9 +163,9 @@
   (require 'cautomaton-core)
   (require 'cautomaton-ai)
   (require 'cautomaton-capture)
-  (require 'forge-backlog)
-  (require 'forge-dev-status)
-  (require 'forge-activity)
+  (require 'cautomaton-backlog)
+  (require 'cautomaton-dev-status)
+  (require 'cautomaton-activity)
   (require 'cautomaton-worktree))
 
 (after! magit (cautomaton-worktree-init))
@@ -224,7 +224,7 @@
     (format "- %s [[%s][%s]]%s\n" time url title tag)))
 
 
-(defun forge/weekly-review ()
+(defun cautomaton/weekly-review ()
   "Process for weekly review - opens relevant files and creates agenda view."
   (interactive)
   ;; Open current weekly plan
@@ -240,7 +240,7 @@
   (message "Ready for weekly review: Week %s plan, Inbox, and Agenda loaded"
            (format-time-string "%Y-W%V")))
 
-(defun forge/goto-week (year week)
+(defun cautomaton/goto-week (year week)
   "Navigate to a specific ISO week in the weekly.org file."
   (interactive
    (let* ((current-year (string-to-number (format-time-string "%Y")))
