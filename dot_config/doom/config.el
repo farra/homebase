@@ -130,6 +130,25 @@
 
 (setq auth-sources '("~/.authinfo.gpg"))
 
+;; Justfile support: syntax highlighting + interactive recipe runner
+(use-package! just-mode
+  :mode ("justfile\\'" "\\.just\\'"))
+
+(use-package! justl
+  :defer t
+  :config
+  (map! :map justl-mode-map
+        "e" #'justl-exec-recipe))
+
+(defun +just/run ()
+  "Run a just recipe in the current project."
+  (interactive)
+  (if-let ((root (or (projectile-project-root) default-directory)))
+      (let ((default-directory root))
+        (justl))
+    (user-error "Not in a project")))
+
+(map! "C-c j" #'+just/run)
 
 ;; Temp load local copies of agent-shell/acp for testing
 
