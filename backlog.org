@@ -93,25 +93,40 @@ transient =SQLite database is busy= warnings.
 Start the daemon explicitly during distrobox creation via =--init-hooks= or
 early in the shell profile to avoid startup races and concurrent DB contention.
 
-*** TODO Rebuild image with emacs-pgtk and revert font size hack      :p1:infra:
+*** DONE Rebuild image with emacs-pgtk and revert font size hack      :p1:infra:
+CLOSED: [2026-02-21]
 :PROPERTIES:
 :EFFORT: 1:00
+:HANDOFF:
+:WORKED_BY: claude-code, human
+:END:
+
+Image rebuilt with =emacs-pgtk=, container recreated, font hack reverted.
+HiDPI scaling works correctly on Gnome Wayland.
+
+*Known limitation:* PGTK (GTK3) Emacs daemon will exit if the Wayland display
+connection drops (undocking, display switch, compositor restart). See future
+task below for GTK4 migration.
+
+** Blocked
+
+** Up Next
+
+*** TODO Track Emacs PGTK2/GTK4 for display reconnection support      :p2:infra:
+:PROPERTIES:
+:EFFORT: 0:15
 :HANDOFF:
 :WORKED_BY:
 :END:
 
-=flake.nix= already updated to use =emacs-pgtk= on Linux (native Wayland).
-Still need to:
+PGTK (GTK3) Emacs cannot survive Wayland display disconnects — the daemon
+simply exits. This affects =emacs --daemon= + =emacsclient= workflows when
+undocking, switching displays, or if the compositor restarts.
 
-1. Rebuild the distrobox image (=just build-image= or push to trigger CI)
-2. Recreate the distrobox container with the new image
-3. Revert =~/.config/doom/config.el= font sizes back to 18 (or =chezmoi apply=)
-   - =doom-font= currently hacked to size 36 for X11 HiDPI workaround
-   - =doom-symbol-font= also bumped to 36
-   - Chezmoi source (=dot_config/doom/config.el=) already has the correct size 18
-4. Verify Emacs renders at correct scale on Gnome Wayland
+Emacs 31 is expected to ship with GTK4/PGTK2 which handles display reconnection.
+Monitor nixpkgs for =emacs-pgtk2= or =emacs-gtk4= and switch when available.
 
-** Blocked
+Until then, avoid relying on long-lived daemon sessions surviving display changes.
 
 ** Up Next
 

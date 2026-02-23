@@ -521,9 +521,9 @@ install-acp:
     #!/usr/bin/env bash
     set -euo pipefail
     echo "Installing ACP adapters for agent-shell..."
-    npm install -g @zed-industries/claude-code-acp
+    npm install -g @zed-industries/claude-agent-acp
     npm install -g @zed-industries/codex-acp
-    echo "ACP adapters installed (claude-code-acp, codex-acp)"
+    echo "ACP adapters installed (claude-agent-acp, codex-acp)"
     echo "Note: Gemini has native ACP support via --experimental-acp (no adapter needed)"
 
 # Update all AI agent CLIs, desktop app, and ACP adapters
@@ -553,5 +553,5 @@ update-gemini:
 
 # Update ACP adapters
 update-acp:
-    npm install -g @zed-industries/claude-code-acp
+    npm install -g @zed-industries/claude-agent-acp
     npm install -g @zed-industries/codex-acp
