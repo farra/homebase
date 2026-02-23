@@ -69,5 +69,9 @@
 (package! agent-shell-manager
   :recipe (:host github :repo "jethrokuan/agent-shell-manager"))
 
+;; Justfile support
+(package! just-mode)
+(package! justl)
+
 ;; gptel - LLM client for programmatic and interactive use
 (package! gptel)
