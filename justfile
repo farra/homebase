@@ -33,6 +33,8 @@ build-variant profile: _require-runtime
         -t {{registry}}/{{image_name}}:"$tag" \
         --build-arg BASE_IMAGE="$RESOLVED_BASE_IMAGE" \
         --build-arg FLAKE_ENV="$RESOLVED_FLAKE_ENV" \
+        --build-arg DNF_PACKAGES="$RESOLVED_DNF_PACKAGES" \
+        --build-arg GODOT_VERSION="$RESOLVED_GODOT_VERSION" \
         -f images/Containerfile .
 
 # Build the default (base) homebase OCI image

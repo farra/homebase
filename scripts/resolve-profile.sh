@@ -8,6 +8,8 @@ set -euo pipefail
 # Output (eval-able):
 #   RESOLVED_FLAKE_ENV='...'
 #   RESOLVED_BASE_IMAGE='...'
+#   RESOLVED_DNF_PACKAGES='...'   (space-separated, empty if not set)
+#   RESOLVED_GODOT_VERSION='...'  (empty if not set)
 #
 # Pure bash — no python3 or external TOML parser required.
 # Works on a fresh Bazzite host before any tooling is installed.
@@ -29,6 +31,8 @@ fi
 # We only need simple key = "value" pairs from a known section header.
 flake_env=""
 base_image=""
+dnf_packages=""
+godot_version=""
 in_section=false
 
 while IFS= read -r line; do
@@ -58,6 +62,15 @@ while IFS= read -r line; do
             flake_env="${BASH_REMATCH[1]}"
         elif [[ "$stripped" =~ ^[[:space:]]*base_image[[:space:]]*=[[:space:]]*\"([^\"]+)\" ]]; then
             base_image="${BASH_REMATCH[1]}"
+        elif [[ "$stripped" =~ ^[[:space:]]*godot_version[[:space:]]*=[[:space:]]*\"([^\"]+)\" ]]; then
+            godot_version="${BASH_REMATCH[1]}"
+        elif [[ "$stripped" =~ ^[[:space:]]*dnf_packages[[:space:]]*=[[:space:]]*\[([^]]*)\] ]]; then
+            raw="${BASH_REMATCH[1]}"
+            # Remove quotes and commas, collapse whitespace
+            raw="${raw//\"/}"
+            raw="${raw//,/ }"
+            read -ra parts <<< "$raw"
+            dnf_packages="${parts[*]}"
         fi
     fi
 done < "$toml_path"
@@ -79,3 +92,5 @@ fi
 
 printf "RESOLVED_FLAKE_ENV='%s'\n" "$flake_env"
 printf "RESOLVED_BASE_IMAGE='%s'\n" "$base_image"
+printf "RESOLVED_DNF_PACKAGES='%s'\n" "$dnf_packages"
+printf "RESOLVED_GODOT_VERSION='%s'\n" "$godot_version"
