@@ -9,10 +9,13 @@
 if [[ -f /run/.containerenv ]]; then
 
     # Start Nix daemon if not running (installed with --init none in container image).
-    # Check the socket, not pgrep — distrobox shares the host PID namespace so
-    # pgrep would see another container's nix-daemon and skip starting our own.
+    # Use `nix store ping` instead of pgrep or socket-file checks:
+    #   - pgrep sees other containers' daemons (shared PID namespace)
+    #   - socket file can be stale after a crashed/killed daemon
+    # Ping verifies the daemon in THIS container is actually responsive.
     if [[ -x /nix/var/nix/profiles/default/bin/nix-daemon ]] && \
-       ! [[ -S /nix/var/nix/daemon-socket/socket ]]; then
+       ! nix store ping &>/dev/null 2>&1; then
+        sudo rm -f /nix/var/nix/daemon-socket/socket 2>/dev/null
         sudo /nix/var/nix/profiles/default/bin/nix-daemon &>/dev/null &
         disown
     fi
