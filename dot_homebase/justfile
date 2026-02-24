@@ -18,7 +18,7 @@ default:
 
 # ── Authentication ───────────────────────────────────────────────────────
 
-# Sign in to 1Password (required for chezmoi secrets: SSH keys, GPG, authinfo)
+# [any] Sign in to 1Password (required for chezmoi secrets: SSH keys, GPG, authinfo)
 auth:
     #!/usr/bin/env bash
     if op whoami &>/dev/null 2>&1; then
@@ -31,18 +31,18 @@ auth:
 
 # ── First-Time Setup ─────────────────────────────────────────────────────
 
-# Core setup shared by all profiles
-setup-core: setup-workspace setup-flatpaks doom-install install-agents
+# [any] Core setup shared by all profiles
+setup-core: setup-workspace setup-flatpaks doom-install (agent "install")
     @echo ""
     @echo "Core setup complete!"
     @echo "  - Workspace directories created"
     @echo "  - Doom Emacs installed (run 'just doom-sync' after config changes)"
-    @echo "  - AI agents installed (claude, codex, gemini)"
+    @echo "  - AI agents installed (claude, claude-desktop, codex, gemini, acp)"
 
-# Full first-time setup (profile-aware)
 # Usage:
 #   homebase setup            # base profile
 #   homebase setup gamedev    # base + gamedev profile extensions
+# [any] Full first-time setup (profile-aware)
 setup profile="base": setup-core
     #!/usr/bin/env bash
     set -euo pipefail
@@ -60,8 +60,7 @@ setup profile="base": setup-core
     echo ""
     echo "Setup complete for profile: $profile"
 
-# Profile-specific setup hook: gamedev
-# Must be run inside the gamedev distrobox.
+# [box] Profile-specific setup hook: gamedev (run inside gamedev distrobox)
 setup-profile-gamedev: godot-export godot-templates
     @echo ""
     @echo "Gamedev profile setup complete."
@@ -70,7 +69,7 @@ setup-profile-gamedev: godot-export godot-templates
 
 # ── Workspace ────────────────────────────────────────────────────────────
 
-# Create workspace directory structure
+# [any] Create workspace directory structure
 setup-workspace:
     @echo "Creating workspace directories..."
     mkdir -p ~/dev/.worktrees ~/dev/me ~/dev/jmt ~/dev/ref
@@ -83,8 +82,8 @@ setup-workspace:
 # Bare clones in ~/dev/.worktrees/, worktrees in group dirs.
 # Each worktree = one branch = one agent session.
 
-# Bare-clone a repo into ~/dev/.worktrees/
 # Usage: homebase clone farra/projectA
+# [any] Bare-clone a repo into ~/dev/.worktrees/
 clone repo:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -99,13 +98,13 @@ clone repo:
     git -C "$dest" fetch origin
     echo "Cloned: $dest"
 
-# List bare clones
+# [any] List bare clones
 clones:
     @ls -1 "$HOME/dev/.worktrees/" 2>/dev/null | sed 's/\.git$//' || echo "(none)"
 
-# Create a worktree from a bare clone
 # Usage: homebase wt projectA fix-auth [group]
 # Branch slashes are flattened in directory name: local/build → project-local-build
+# [any] Create a worktree from a bare clone
 wt project branch group="me":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -125,8 +124,8 @@ wt project branch group="me":
     git -C "$bare" worktree add "$dest" -b "$branch"
     echo "Created: $dest (branch: $branch)"
 
-# Create a worktree from an existing remote branch
 # Branch slashes are flattened in directory name: feature/foo → project-feature-foo
+# [any] Create a worktree from an existing remote branch
 wt-checkout project branch group="me":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -142,10 +141,10 @@ wt-checkout project branch group="me":
     git -C "$bare" worktree add "$dest" "$branch"
     echo "Checked out: $dest (branch: $branch)"
 
-# Remove a worktree (keeps the branch)
 # Accepts absolute path or relative path from ~/dev/
 # Usage: homebase wt-rm jmt/gongfu-local-build
 #        homebase wt-rm ~/dev/jmt/gongfu-local-build
+# [any] Remove a worktree (keeps the branch)
 wt-rm path:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -168,7 +167,7 @@ wt-rm path:
         exit 1
     fi
 
-# List all active worktrees across all bare clones
+# [any] List all active worktrees across all bare clones
 wts:
     #!/usr/bin/env bash
     for bare in "$HOME/dev/.worktrees/"*.git; do
@@ -184,16 +183,16 @@ wts:
 
 # ── Updates ──────────────────────────────────────────────────────────────
 
-# Update everything (dotfiles + host tools + flatpaks + agents)
-update: update-dotfiles update-host update-flatpaks update-agents
+# [any] Update everything (dotfiles + host tools + flatpaks + agents)
+update: update-dotfiles update-host update-flatpaks (agent "update")
     @echo ""
     @echo "All updates complete."
 
-# Pull and apply latest dotfiles
+# [any] Pull and apply latest dotfiles
 update-dotfiles:
     chezmoi update
 
-# Update host tools (Homebrew) — skipped inside distrobox
+# [host] Update host tools (Homebrew) — skipped inside distrobox
 update-host:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -216,7 +215,7 @@ update-host:
 
 # ── Flatpak Apps ─────────────────────────────────────────────────────────
 
-# Install Flatpak apps declared in homebase.toml — skipped inside distrobox or if flatpak missing
+# [host] Install Flatpak apps declared in homebase.toml — skipped inside distrobox
 setup-flatpaks:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -246,7 +245,7 @@ setup-flatpaks:
     done < <("$PARSER" flatpaks apps "$TOML")
     echo "Flatpak setup complete."
 
-# Update all installed Flatpak apps — skipped inside distrobox or if flatpak missing
+# [host] Update all installed Flatpak apps — skipped inside distrobox
 update-flatpaks:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -262,7 +261,7 @@ update-flatpaks:
     flatpak update --noninteractive
     echo "Flatpak update complete."
 
-# Remove a single Flatpak app (remember to also remove it from homebase.toml)
+# [host] Remove a single Flatpak app (remember to also remove it from homebase.toml)
 remove-flatpak app_id:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -287,6 +286,7 @@ remove-flatpak app_id:
 # Syntax:
 #   homebase box <action> [profile] [name]
 # Actions: create | enter | rm | rebuild
+# [host] Manage distrobox containers (create, enter, rm, rebuild)
 box action profile="base" name="":
     #!/usr/bin/env bash
     set -euo pipefail
@@ -367,7 +367,7 @@ box action profile="base" name="":
 
 # ── Doom Emacs ───────────────────────────────────────────────────────────
 
-# Install Doom Emacs (clone + install)
+# [box] Install Doom Emacs (clone + install)
 doom-install:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -387,26 +387,26 @@ doom-install:
     "$HOME/.emacs.d/bin/doom" install
     echo "Doom Emacs installed. Config at ~/.config/doom/ (managed by chezmoi)"
 
-# Reinstall Doom Emacs from scratch
+# [box] Reinstall Doom Emacs from scratch
 doom-reinstall:
     rm -rf "$HOME/.emacs.d"
     just doom-install
 
-# Sync Doom Emacs (after config changes)
+# [box] Sync Doom Emacs (after config changes)
 doom-sync:
     ~/.emacs.d/bin/doom sync
 
-# Run Doom doctor
+# [box] Run Doom doctor
 doom-doctor:
     ~/.emacs.d/bin/doom doctor
 
-# Export Emacs to host desktop (distrobox only)
+# [box] Export Emacs to host desktop (distrobox only)
 doom-export:
     distrobox-export --app emacs 2>/dev/null || echo "Not in a distrobox?"
 
 # ── Godot (gamedev profile) ──────────────────────────────────────────────
 
-# Export Godot editors to host desktop (run inside gamedev distrobox)
+# [box] Export Godot editors to host desktop (run inside gamedev distrobox)
 godot-export:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -423,7 +423,7 @@ godot-export:
         distrobox-export --bin /usr/local/bin/godot-mono --export-path ~/.local/bin/
     fi
 
-# Symlink baked export templates to Godot's expected location
+# [box] Symlink baked export templates to Godot's expected location
 godot-templates:
     #!/usr/bin/env bash
     set -euo pipefail
@@ -445,113 +445,146 @@ godot-templates:
     echo "Export templates available in Godot editor."
 
 # ── AI Agents ────────────────────────────────────────────────────────────
+#
+# Canonical interface:
+#   homebase agent install           # install all agents
+#   homebase agent update            # update all agents
+#   homebase agent install claude    # install only claude
+#   homebase agent update codex     # update only codex
+#
+# Agents: claude | claude-desktop | codex | gemini | acp
 
-# Install all AI agent CLIs, desktop app, and ACP adapters
-# Agents are host-level tools (brew/npm/curl) — shared across all containers.
-# Claude Desktop is the exception (DNF inside distrobox, exported to host desktop).
-install-agents: install-claude install-claude-desktop install-codex install-gemini install-acp
-
-# Install Claude Code
-install-claude:
+# [any] Install or update AI agent CLIs, desktop app, and ACP adapters
+agent action name="all":
     #!/usr/bin/env bash
     set -euo pipefail
-    if command -v claude &>/dev/null; then
-        echo "Claude Code already installed: $(claude --version 2>/dev/null || echo 'unknown version')"
-        echo "Run 'just update-claude' to update"
-        exit 0
-    fi
-    echo "Installing Claude Code..."
-    curl -fsSL https://claude.ai/install.sh | bash
-    echo "Claude Code installed"
 
-# Install Claude Desktop (unofficial Linux build, for CoWork)
-# Requires distrobox — installs via DNF and exports to host desktop
-install-claude-desktop:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [[ ! -f /run/.containerenv ]]; then
-        echo "Not in a distrobox — skipping Claude Desktop install."
-        exit 0
-    fi
-    if command -v claude-desktop &>/dev/null; then
-        echo "Claude Desktop already installed: $(claude-desktop --version 2>/dev/null || echo 'unknown version')"
-        echo "Run 'just update-claude-desktop' to update"
-        exit 0
-    fi
-    # Add DNF repo if not present
-    if [[ ! -f /etc/yum.repos.d/claude-desktop.repo ]]; then
-        echo "Adding Claude Desktop DNF repository..."
-        sudo curl -fsSL https://aaddrick.github.io/claude-desktop-debian/rpm/claude-desktop.repo \
-            -o /etc/yum.repos.d/claude-desktop.repo
-    fi
-    echo "Installing Claude Desktop..."
-    sudo dnf install -y claude-desktop
-    echo "Exporting Claude Desktop to host..."
-    distrobox-export --app claude-desktop 2>/dev/null || echo "Export failed — you may need to export manually."
-    echo "Claude Desktop installed and exported to host desktop."
+    _install_claude() {
+        if command -v claude &>/dev/null; then
+            echo "Claude Code already installed: $(claude --version 2>/dev/null || echo 'unknown version')"
+            echo "Run 'homebase agent update claude' to update"
+            return 0
+        fi
+        echo "Installing Claude Code..."
+        curl -fsSL https://claude.ai/install.sh | bash
+        echo "Claude Code installed"
+    }
 
-# Install Codex CLI
-install-codex:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if command -v codex &>/dev/null; then
-        echo "Codex already installed: $(codex --version 2>/dev/null || echo 'unknown version')"
-        echo "Run 'just update-codex' to update"
-        exit 0
-    fi
-    echo "Installing Codex CLI..."
-    brew install codex
-    echo "Codex CLI installed"
+    _update_claude() {
+        curl -fsSL https://claude.ai/install.sh | bash
+    }
 
-# Install Gemini CLI
-install-gemini:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if command -v gemini &>/dev/null; then
-        echo "Gemini CLI already installed: $(gemini --version 2>/dev/null || echo 'unknown version')"
-        echo "Run 'just update-gemini' to update"
-        exit 0
-    fi
-    echo "Installing Gemini CLI..."
-    brew install gemini-cli
-    echo "Gemini CLI installed"
+    _install_claude_desktop() {
+        if [[ ! -f /run/.containerenv ]]; then
+            echo "Not in a distrobox — skipping Claude Desktop install."
+            return 0
+        fi
+        if command -v claude-desktop &>/dev/null; then
+            echo "Claude Desktop already installed: $(claude-desktop --version 2>/dev/null || echo 'unknown version')"
+            echo "Run 'homebase agent update claude-desktop' to update"
+            return 0
+        fi
+        # Add DNF repo if not present
+        if [[ ! -f /etc/yum.repos.d/claude-desktop.repo ]]; then
+            echo "Adding Claude Desktop DNF repository..."
+            sudo curl -fsSL https://aaddrick.github.io/claude-desktop-debian/rpm/claude-desktop.repo \
+                -o /etc/yum.repos.d/claude-desktop.repo
+        fi
+        echo "Installing Claude Desktop..."
+        sudo dnf install -y claude-desktop
+        echo "Exporting Claude Desktop to host..."
+        distrobox-export --app claude-desktop 2>/dev/null || echo "Export failed — you may need to export manually."
+        echo "Claude Desktop installed and exported to host desktop."
+    }
 
-# Install ACP adapters (Agent Client Protocol — bridges agents to Emacs agent-shell)
-install-acp:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    echo "Installing ACP adapters for agent-shell..."
-    npm install -g @zed-industries/claude-agent-acp
-    npm install -g @zed-industries/codex-acp
-    echo "ACP adapters installed (claude-agent-acp, codex-acp)"
-    echo "Note: Gemini has native ACP support via --experimental-acp (no adapter needed)"
+    _update_claude_desktop() {
+        if [[ ! -f /run/.containerenv ]]; then
+            echo "Not in a distrobox. Run this inside the home container."
+            return 0
+        fi
+        sudo dnf upgrade -y claude-desktop
+    }
 
-# Update all AI agent CLIs, desktop app, and ACP adapters
-update-agents: update-claude update-claude-desktop update-codex update-gemini update-acp
+    _install_codex() {
+        if command -v codex &>/dev/null; then
+            echo "Codex already installed: $(codex --version 2>/dev/null || echo 'unknown version')"
+            echo "Run 'homebase agent update codex' to update"
+            return 0
+        fi
+        echo "Installing Codex CLI..."
+        brew install codex
+        echo "Codex CLI installed"
+    }
 
-# Update Claude Code
-update-claude:
-    curl -fsSL https://claude.ai/install.sh | bash
+    _update_codex() {
+        brew upgrade codex || brew install codex
+    }
 
-# Update Claude Desktop
-update-claude-desktop:
-    #!/usr/bin/env bash
-    set -euo pipefail
-    if [[ ! -f /run/.containerenv ]]; then
-        echo "Not in a distrobox. Run this inside the home container."
-        exit 0
-    fi
-    sudo dnf upgrade -y claude-desktop
+    _install_gemini() {
+        if command -v gemini &>/dev/null; then
+            echo "Gemini CLI already installed: $(gemini --version 2>/dev/null || echo 'unknown version')"
+            echo "Run 'homebase agent update gemini' to update"
+            return 0
+        fi
+        echo "Installing Gemini CLI..."
+        brew install gemini-cli
+        echo "Gemini CLI installed"
+    }
 
-# Update Codex CLI
-update-codex:
-    brew upgrade codex || brew install codex
+    _update_gemini() {
+        brew upgrade gemini-cli || brew install gemini-cli
+    }
 
-# Update Gemini CLI
-update-gemini:
-    brew upgrade gemini-cli || brew install gemini-cli
+    _install_acp() {
+        echo "Installing ACP adapters for agent-shell..."
+        npm install -g @zed-industries/claude-agent-acp
+        npm install -g @zed-industries/codex-acp
+        echo "ACP adapters installed (claude-agent-acp, codex-acp)"
+        echo "Note: Gemini has native ACP support via --experimental-acp (no adapter needed)"
+    }
 
-# Update ACP adapters
-update-acp:
-    npm install -g @zed-industries/claude-agent-acp
-    npm install -g @zed-industries/codex-acp
+    _update_acp() {
+        npm install -g @zed-industries/claude-agent-acp
+        npm install -g @zed-industries/codex-acp
+    }
+
+    all_agents=(claude claude-desktop codex gemini acp)
+
+    _dispatch_one() {
+        local act="$1" agent="$2"
+        case "$agent" in
+            claude)         "_${act}_claude" ;;
+            claude-desktop) "_${act}_claude_desktop" ;;
+            codex)          "_${act}_codex" ;;
+            gemini)         "_${act}_gemini" ;;
+            acp)            "_${act}_acp" ;;
+            *)
+                echo "ERROR: Unknown agent '$agent'"
+                echo "Agents: ${all_agents[*]}"
+                return 1
+                ;;
+        esac
+    }
+
+    action="{{action}}"
+    name="{{name}}"
+
+    case "$action" in
+        install|update)
+            if [[ "$name" == "all" ]]; then
+                for a in "${all_agents[@]}"; do
+                    echo "── $action $a ──"
+                    _dispatch_one "$action" "$a"
+                    echo ""
+                done
+            else
+                _dispatch_one "$action" "$name"
+            fi
+            ;;
+        *)
+            echo "ERROR: Unknown action '$action'"
+            echo "Usage: homebase agent <install|update> [agent-name|all]"
+            echo "Agents: ${all_agents[*]}"
+            exit 1
+            ;;
+    esac
