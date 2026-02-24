@@ -141,15 +141,40 @@ wt-checkout project branch group="me":
     git -C "$bare" worktree add "$dest" "$branch"
     echo "Checked out: $dest (branch: $branch)"
 
-# Accepts absolute path or relative path from ~/dev/
+# Accepts absolute path, relative path from ~/dev/, or no args for interactive selection.
 # Usage: homebase wt-rm jmt/gongfu-local-build
 #        homebase wt-rm ~/dev/jmt/gongfu-local-build
+#        homebase wt-rm                              (interactive picker)
 # [any] Remove a worktree (keeps the branch)
-wt-rm path:
+wt-rm path="":
     #!/usr/bin/env bash
     set -euo pipefail
+    HAS_GUM=false; command -v gum &>/dev/null && HAS_GUM=true
+    _confirm() { if $HAS_GUM; then gum confirm "$1"; else read -rp "$1 [y/N] " a && [[ "$a" =~ ^[Yy]$ ]]; fi; }
+    _choose() {
+        local hdr="$1"; shift
+        if $HAS_GUM; then printf '%s\n' "$@" | gum choose --header "$hdr"; return; fi
+        echo "$hdr" >&2; local i=1; for o in "$@"; do echo "  $i) $o" >&2; ((i++)); done
+        read -rp "Enter number: " c; [[ "$c" =~ ^[0-9]+$ ]] && (( c>=1 && c<=$# )) && echo "${!c}" || return 1
+    }
     input="{{path}}"
-    if [[ "$input" = /* ]]; then
+    if [[ -z "$input" ]]; then
+        # Collect all active worktrees
+        declare -a wt_list=()
+        for bare in "$HOME/dev/.worktrees/"*.git; do
+            [[ -d "$bare" ]] || continue
+            while IFS= read -r line; do
+                wt_path="$(echo "$line" | awk '{print $1}')"
+                [[ "$wt_path" == "$bare" ]] && continue
+                wt_list+=("$wt_path")
+            done < <(git -C "$bare" worktree list)
+        done
+        if [[ ${#wt_list[@]} -eq 0 ]]; then
+            echo "No active worktrees found."
+            exit 0
+        fi
+        target=$(_choose "Select worktree to remove:" "${wt_list[@]}") || exit 0
+    elif [[ "$input" = /* ]]; then
         target="$input"
     else
         target="$HOME/dev/$input"
@@ -158,6 +183,7 @@ wt-rm path:
         echo "Not found: $target"
         exit 1
     fi
+    _confirm "Remove worktree: $target?" || exit 0
     bare="$(git -C "$target" rev-parse --git-common-dir 2>/dev/null)" || true
     if [[ -n "$bare" && -d "$bare" ]]; then
         git -C "$bare" worktree remove "$target"
@@ -190,12 +216,18 @@ update: update-dotfiles update-host update-flatpaks (agent "update")
 
 # [any] Pull and apply latest dotfiles
 update-dotfiles:
-    chezmoi update
+    #!/usr/bin/env bash
+    set -euo pipefail
+    HAS_GUM=false; command -v gum &>/dev/null && HAS_GUM=true
+    _spin() { if $HAS_GUM; then gum spin --spinner dot --title "$1" -- "${@:2}"; else echo "$1"; "${@:2}"; fi; }
+    _spin "Updating dotfiles..." chezmoi update
 
 # [host] Update host tools (Homebrew) — skipped inside distrobox
 update-host:
     #!/usr/bin/env bash
     set -euo pipefail
+    HAS_GUM=false; command -v gum &>/dev/null && HAS_GUM=true
+    _spin() { if $HAS_GUM; then gum spin --spinner dot --title "$1" -- "${@:2}"; else echo "$1"; "${@:2}"; fi; }
     if [[ -f /run/.containerenv ]]; then
         echo "Inside a container — skipping host tool update."
         echo "Run this on the host to update Homebrew."
@@ -211,7 +243,7 @@ update-host:
     tmp_brewfile="$(mktemp)"
     trap 'rm -f "$tmp_brewfile"' EXIT
     "$RENDERER" "$TOML" > "$tmp_brewfile"
-    brew bundle --file="$tmp_brewfile" --no-lock --upgrade
+    _spin "Updating host tools (Homebrew)..." brew bundle --file="$tmp_brewfile" --no-lock --upgrade
 
 # ── Flatpak Apps ─────────────────────────────────────────────────────────
 
@@ -219,6 +251,8 @@ update-host:
 setup-flatpaks:
     #!/usr/bin/env bash
     set -euo pipefail
+    HAS_GUM=false; command -v gum &>/dev/null && HAS_GUM=true
+    _spin() { if $HAS_GUM; then gum spin --spinner dot --title "$1" -- "${@:2}"; else echo "$1"; "${@:2}"; fi; }
     if [[ -f /run/.containerenv ]]; then
         echo "Inside a container — skipping Flatpak setup."
         exit 0
@@ -239,8 +273,7 @@ setup-flatpaks:
         if flatpak info "$app_id" &>/dev/null; then
             echo "  Already installed: $app_id"
         else
-            echo "  Installing: $app_id"
-            flatpak install --noninteractive flathub "$app_id"
+            _spin "  Installing $app_id..." flatpak install --noninteractive flathub "$app_id"
         fi
     done < <("$PARSER" flatpaks apps "$TOML")
     echo "Flatpak setup complete."
@@ -249,6 +282,8 @@ setup-flatpaks:
 update-flatpaks:
     #!/usr/bin/env bash
     set -euo pipefail
+    HAS_GUM=false; command -v gum &>/dev/null && HAS_GUM=true
+    _spin() { if $HAS_GUM; then gum spin --spinner dot --title "$1" -- "${@:2}"; else echo "$1"; "${@:2}"; fi; }
     if [[ -f /run/.containerenv ]]; then
         echo "Inside a container — skipping Flatpak update."
         exit 0
@@ -257,18 +292,20 @@ update-flatpaks:
         echo "flatpak not found — skipping (not applicable on this platform)."
         exit 0
     fi
-    echo "Updating Flatpak apps..."
-    flatpak update --noninteractive
+    _spin "Updating Flatpak apps..." flatpak update --noninteractive
     echo "Flatpak update complete."
 
 # [host] Remove a single Flatpak app (remember to also remove it from homebase.toml)
 remove-flatpak app_id:
     #!/usr/bin/env bash
     set -euo pipefail
+    HAS_GUM=false; command -v gum &>/dev/null && HAS_GUM=true
+    _confirm() { if $HAS_GUM; then gum confirm "$1"; else read -rp "$1 [y/N] " a && [[ "$a" =~ ^[Yy]$ ]]; fi; }
     if ! command -v flatpak &>/dev/null; then
         echo "flatpak not found."
         exit 1
     fi
+    _confirm "Remove Flatpak app '{{app_id}}'?" || exit 0
     flatpak uninstall --noninteractive "{{app_id}}"
     echo "Removed: {{app_id}}"
     echo "Remember to also remove it from homebase.toml [flatpaks] apps."
@@ -290,6 +327,15 @@ remove-flatpak app_id:
 box action profile="base" name="":
     #!/usr/bin/env bash
     set -euo pipefail
+    HAS_GUM=false; command -v gum &>/dev/null && HAS_GUM=true
+    _confirm() { if $HAS_GUM; then gum confirm "$1"; else read -rp "$1 [y/N] " a && [[ "$a" =~ ^[Yy]$ ]]; fi; }
+    _spin() { if $HAS_GUM; then gum spin --spinner dot --title "$1" -- "${@:2}"; else echo "$1"; "${@:2}"; fi; }
+    _choose() {
+        local hdr="$1"; shift
+        if $HAS_GUM; then printf '%s\n' "$@" | gum choose --header "$hdr"; return; fi
+        echo "$hdr" >&2; local i=1; for o in "$@"; do echo "  $i) $o" >&2; ((i++)); done
+        read -rp "Enter number: " c; [[ "$c" =~ ^[0-9]+$ ]] && (( c>=1 && c<=$# )) && echo "${!c}" || return 1
+    }
 
     if [[ -z "{{runtime}}" ]]; then
         echo "ERROR: Neither podman nor docker found. Install one first."
@@ -344,18 +390,28 @@ box action profile="base" name="":
 
     case "$action" in
         create)
-            {{runtime}} pull "$image_ref"
+            _spin "Pulling $image_ref..." {{runtime}} pull "$image_ref"
             _box_create "$image_ref" "$box_name"
             ;;
         enter)
+            if ! {{runtime}} container exists "$box_name" 2>/dev/null; then
+                mapfile -t boxes < <(distrobox list --no-color 2>/dev/null | tail -n +2 | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $2); print $2}')
+                if [[ ${#boxes[@]} -eq 0 ]]; then
+                    echo "No distrobox containers found. Run: homebase box create"
+                    exit 1
+                fi
+                box_name=$(_choose "Container '$box_name' not found. Pick one:" "${boxes[@]}") || exit 1
+            fi
             distrobox enter "$box_name"
             ;;
         rm)
+            _confirm "Remove container '$box_name'? This is destructive." || exit 0
             distrobox rm "$box_name" --force
             ;;
         rebuild)
+            _confirm "Rebuild container '$box_name'? This will destroy and recreate it." || exit 0
             distrobox rm "$box_name" --force 2>/dev/null || true
-            {{runtime}} pull "$image_ref"
+            _spin "Pulling $image_ref..." {{runtime}} pull "$image_ref"
             _box_create "$image_ref" "$box_name"
             ;;
         *)
@@ -389,6 +445,11 @@ doom-install:
 
 # [box] Reinstall Doom Emacs from scratch
 doom-reinstall:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    HAS_GUM=false; command -v gum &>/dev/null && HAS_GUM=true
+    _confirm() { if $HAS_GUM; then gum confirm "$1"; else read -rp "$1 [y/N] " a && [[ "$a" =~ ^[Yy]$ ]]; fi; }
+    _confirm "Reinstall Doom Emacs? This will delete ~/.emacs.d entirely." || exit 0
     rm -rf "$HOME/.emacs.d"
     just doom-install
 

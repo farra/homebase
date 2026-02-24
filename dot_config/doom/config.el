@@ -43,6 +43,12 @@
 ;; numbers are disabled. For relative line numbers, set this to `relative'.
 (setq display-line-numbers-type t)
 
+;; GC tuning: GCMH's low threshold (used during timer/process-filter activity)
+;; defaults to 800K, causing frequent 100ms+ GC pauses when agent-shell processes
+;; and dashboard timers drive most of the allocation outside the command loop.
+(after! gcmh
+  (setq gcmh-low-cons-threshold (* 16 1024 1024)))  ; 16MB
+
 ;; vterm: use zsh (Emacs defaults to bash via shell-file-name)
 (after! vterm
   (setq vterm-shell (or (getenv "SHELL") "/usr/bin/zsh")))
