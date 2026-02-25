@@ -220,7 +220,7 @@ update-dotfiles:
     set -euo pipefail
     HAS_GUM=false; command -v gum &>/dev/null && HAS_GUM=true
     _spin() { if $HAS_GUM; then gum spin --spinner dot --title "$1" -- "${@:2}"; else echo "$1"; "${@:2}"; fi; }
-    _spin "Updating dotfiles..." chezmoi update
+    _spin "Updating dotfiles..." chezmoi update --force
 
 # [host] Update host tools (Homebrew) — skipped inside distrobox
 update-host:

@@ -5,7 +5,7 @@
       "repo": "anthropics/claude-plugins-official"
     },
     "installLocation": "{{ .chezmoi.homeDir }}/.claude/plugins/marketplaces/claude-plugins-official",
-    "lastUpdated": "2026-01-01T00:00:00.000Z"
+    "lastUpdated": "{{ now | date "2006-01-02T15:04:05.000Z" }}"
   },
   "dev-agent-backlog": {
     "source": {
@@ -13,7 +13,7 @@
       "repo": "farra/dev-agent-backlog"
     },
     "installLocation": "{{ .chezmoi.homeDir }}/.claude/plugins/marketplaces/dev-agent-backlog",
-    "lastUpdated": "2026-01-01T00:00:00.000Z"
+    "lastUpdated": "{{ now | date "2006-01-02T15:04:05.000Z" }}"
   },
   "gongfu-claude-code": {
     "source": {
@@ -22,6 +22,6 @@
     },
     "autoUpdate": true,
     "installLocation": "{{ .chezmoi.homeDir }}/.claude/plugins/marketplaces/gongfu-claude-code",
-    "lastUpdated": "2026-01-01T00:00:00.000Z"
+    "lastUpdated": "{{ now | date "2006-01-02T15:04:05.000Z" }}"
   }
 }
