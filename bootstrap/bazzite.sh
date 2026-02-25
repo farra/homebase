@@ -92,7 +92,7 @@ else
     tmp_brewfile="$(mktemp)"
     trap 'rm -f "$tmp_brewfile"' EXIT
     "$BREWFILE_RENDERER" "$HOMEBASE_TOML" > "$tmp_brewfile"
-    brew bundle --file="$tmp_brewfile" --no-lock
+    brew bundle --file="$tmp_brewfile"
     rm -f "$tmp_brewfile"
     trap - EXIT
 

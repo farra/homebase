@@ -67,7 +67,7 @@ op read "op://Private/<your-gpg-key-item>/homebase-authinfo-secret.asc" | gpg --
 echo "<your-gpg-fingerprint>:6:" | gpg --batch --import-ownertrust
 chezmoi init --apply <your-github-user>/homebase
 ~/.local/share/chezmoi/scripts/render-brewfile.sh ~/.local/share/chezmoi/homebase.toml > /tmp/homebase.Brewfile
-brew bundle --file=/tmp/homebase.Brewfile --no-lock --upgrade
+brew bundle --file=/tmp/homebase.Brewfile --upgrade
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh
 ```
 

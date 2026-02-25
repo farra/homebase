@@ -243,7 +243,7 @@ update-host:
     tmp_brewfile="$(mktemp)"
     trap 'rm -f "$tmp_brewfile"' EXIT
     "$RENDERER" "$TOML" > "$tmp_brewfile"
-    _spin "Updating host tools (Homebrew)..." brew bundle --file="$tmp_brewfile" --no-lock --upgrade
+    _spin "Updating host tools (Homebrew)..." brew bundle --file="$tmp_brewfile" --upgrade
 
 # ── Flatpak Apps ─────────────────────────────────────────────────────────
 

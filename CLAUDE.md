@@ -144,7 +144,7 @@ brew install chezmoi && brew install --cask 1password-cli
 eval "$(op signin)"
 chezmoi init --apply farra/homebase
 ~/.local/share/chezmoi/scripts/render-brewfile.sh ~/.local/share/chezmoi/homebase.toml > /tmp/homebase.Brewfile
-brew bundle --file=/tmp/homebase.Brewfile --no-lock --upgrade
+brew bundle --file=/tmp/homebase.Brewfile --upgrade
 ```
 
 ## Secrets

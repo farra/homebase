@@ -117,7 +117,7 @@ chezmoi init --apply <your-github-user>/homebase
 
 # 6. Remaining Homebrew packages (including Nerd Fonts)
 ~/.local/share/chezmoi/scripts/render-brewfile.sh ~/.local/share/chezmoi/homebase.toml > /tmp/homebase.Brewfile
-brew bundle --file=/tmp/homebase.Brewfile --no-lock --upgrade
+brew bundle --file=/tmp/homebase.Brewfile --upgrade
 
 # 7. Nix (for project-level shells)
 curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh
