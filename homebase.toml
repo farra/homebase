@@ -85,6 +85,26 @@ godot_version = "4.6.1"
 # macOS: installed via Homebrew cask
 nerd-fonts = ["FiraCode", "FiraMono"]
 
+[fonts.extra]
+# Non-Nerd Fonts with custom download sources.
+# Parallel arrays — entries at the same index are correlated.
+#   names[i]: install subdirectory under ~/.local/share/fonts/
+#   urls[i]:  zip download URL
+#   globs[i]: find -path pattern for .ttf files inside the extracted zip
+# macos-casks: flat list of Homebrew cask names (macOS only)
+names = ["Lato", "iAWriter"]
+urls = [
+  "https://www.latofonts.com/files/Lato2OFL.zip",
+  "https://github.com/iaolo/iA-Fonts/archive/refs/heads/master.zip",
+]
+globs = ["*.ttf", "*/Static/*.ttf"]
+macos-casks = [
+  "font-lato",
+  "font-ia-writer-mono",
+  "font-ia-writer-duo",
+  "font-ia-writer-quattro",
+]
+
 [macos]
 # Homebrew casks (GUI apps, macOS only)
 casks = ["emacs", "tailscale", "font-fira-code-nerd-font", "font-fira-mono-nerd-font"]

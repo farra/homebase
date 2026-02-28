@@ -43,3 +43,14 @@ EOF
 while IFS= read -r cask; do
     printf 'cask "%s" if OS.mac?\n' "$cask"
 done < <("$PARSER" macos casks "$TOML_PATH")
+
+# Extra font casks (from [fonts.extra] macos-casks, if present)
+if "$PARSER" fonts.extra macos-casks "$TOML_PATH" &>/dev/null; then
+    cat <<'EOF'
+
+# macOS only - extra fonts
+EOF
+    while IFS= read -r cask; do
+        printf 'cask "%s" if OS.mac?\n' "$cask"
+    done < <("$PARSER" fonts.extra macos-casks "$TOML_PATH")
+fi

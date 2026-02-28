@@ -237,23 +237,66 @@ fi
 
 # ── Phase 6: Fonts ────────────────────────────────────────────────────────
 
-info "Phase 6: Nerd Fonts"
+info "Phase 6: Fonts"
 
 if stamp_check "06-fonts"; then
-    skip "Nerd Fonts already installed"
+    skip "Fonts already installed"
 else
-    FONT_DIR="$HOME/.local/share/fonts/NerdFonts"
-    mkdir -p "$FONT_DIR"
+    CHEZMOI_SOURCE="$HOME/.local/share/chezmoi"
+    PARSER="${CHEZMOI_SOURCE}/scripts/parse-toml-array.sh"
+    TOML="${CHEZMOI_SOURCE}/homebase.toml"
+
+    # 6a: Nerd Fonts (uniform URL pattern from ryanoasis/nerd-fonts releases)
+    NERD_FONT_DIR="$HOME/.local/share/fonts/NerdFonts"
+    mkdir -p "$NERD_FONT_DIR"
     NERD_FONTS_BASE="https://github.com/ryanoasis/nerd-fonts/releases/latest/download"
-    for font in FiraCode FiraMono; do
-        echo "  Downloading ${font} Nerd Font..."
-        curl -fLo "/tmp/${font}.zip" "${NERD_FONTS_BASE}/${font}.zip"
-        unzip -o "/tmp/${font}.zip" -d "$FONT_DIR/"
-        rm -f "/tmp/${font}.zip"
-    done
+    if [[ -x "$PARSER" ]]; then
+        while IFS= read -r font; do
+            echo "  Downloading ${font} Nerd Font..."
+            curl -fLo "/tmp/${font}.zip" "${NERD_FONTS_BASE}/${font}.zip"
+            unzip -o "/tmp/${font}.zip" -d "$NERD_FONT_DIR/"
+            rm -f "/tmp/${font}.zip"
+        done < <("$PARSER" fonts nerd-fonts "$TOML")
+    else
+        # Fallback before chezmoi apply (standalone bootstrap)
+        for font in FiraCode FiraMono; do
+            echo "  Downloading ${font} Nerd Font..."
+            curl -fLo "/tmp/${font}.zip" "${NERD_FONTS_BASE}/${font}.zip"
+            unzip -o "/tmp/${font}.zip" -d "$NERD_FONT_DIR/"
+            rm -f "/tmp/${font}.zip"
+        done
+    fi
+    ok "Nerd Fonts installed to $NERD_FONT_DIR"
+
+    # 6b: Extra fonts (each has its own download URL and extraction pattern)
+    if [[ -x "$PARSER" ]] && "$PARSER" fonts.extra names "$TOML" &>/dev/null; then
+        mapfile -t extra_names < <("$PARSER" fonts.extra names "$TOML")
+        mapfile -t extra_urls  < <("$PARSER" fonts.extra urls  "$TOML")
+        mapfile -t extra_globs < <("$PARSER" fonts.extra globs "$TOML")
+
+        for i in "${!extra_names[@]}"; do
+            name="${extra_names[$i]}"
+            url="${extra_urls[$i]}"
+            pattern="${extra_globs[$i]}"
+            dest="$HOME/.local/share/fonts/${name}"
+            mkdir -p "$dest"
+
+            echo "  Downloading ${name} fonts..."
+            curl -fLo "/tmp/${name}.zip" "$url"
+
+            # Extract to temp dir, then copy matching .ttf files to dest
+            tmp_extract="$(mktemp -d)"
+            unzip -o "/tmp/${name}.zip" -d "$tmp_extract"
+            find "$tmp_extract" -path "$pattern" -name '*.ttf' -exec cp {} "$dest/" \;
+            rm -rf "$tmp_extract" "/tmp/${name}.zip"
+
+            ok "${name} fonts installed to $dest"
+        done
+    fi
+
     fc-cache -f
     stamp_done "06-fonts"
-    ok "Nerd Fonts installed to $FONT_DIR (FiraCode, FiraMono)"
+    ok "All fonts installed"
 fi
 
 # ── Phase 7: Distrobox ──────────────────────────────────────────────────────

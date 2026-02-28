@@ -105,6 +105,10 @@ include = ["emacs-vterm"]  # special package expressions from flake.nix
 [fonts]       # Host-level Nerd Fonts
 nerd-fonts = ["FiraCode", "FiraMono"]
 
+[fonts.extra] # Non-Nerd Fonts with custom download URLs
+names, urls, globs = parallel arrays (correlated by index)
+macos-casks = flat list of Homebrew cask names
+
 [macos]       # Homebrew casks (macOS only)
 casks = ["emacs", "tailscale", "font-fira-code-nerd-font", "font-fira-mono-nerd-font"]
 
@@ -217,6 +221,11 @@ When helping with this project:
 1. Add to `homebase.toml` `[host]` tools (must be a brew formula, not a cask)
 2. No checked-in Brewfile required; host commands render an ephemeral Brewfile at runtime
 3. Note: `1password-cli` is a cask and handled directly in bootstrap scripts, not via `[host].tools`
+
+**Add a custom (non-Nerd) font:**
+1. Add name, url, glob to `homebase.toml` `[fonts.extra]` parallel arrays (same index)
+2. Add macOS cask name(s) to `[fonts.extra]` `macos-casks`
+3. Delete stamp and re-run: `rm ~/.homebase-bootstrap/06-fonts && bash bootstrap/bazzite.sh`
 
 **Add a new Flatpak app:**
 1. Add the Flathub app ID to `homebase.toml` `[flatpaks]` apps
