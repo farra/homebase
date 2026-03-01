@@ -317,6 +317,16 @@
   (setq agent-shell-openai-authentication
         (agent-shell-openai-make-authentication :login t))
 
+  ;; Store transcripts in forge vault, organized by project
+  (setq agent-shell-transcript-file-path-function
+        (lambda ()
+          (let* ((project-name (file-name-nondirectory
+                                (directory-file-name (agent-shell-cwd))))
+                 (dir (expand-file-name
+                       (concat "~/forge/vault/agent-shell/" project-name "/transcripts/")))
+                 (filename (format-time-string "%F-%H-%M-%S.md")))
+            (expand-file-name filename dir))))
+
   ;; Provider-specific bindings (after agent-shell loads)
   (map! "C-c / c" #'agent-shell-anthropic-start-claude-code
         "C-c / x" #'agent-shell-openai-start-codex
