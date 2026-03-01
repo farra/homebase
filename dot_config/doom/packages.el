@@ -73,5 +73,8 @@
 (package! just-mode)
 (package! justl)
 
+;; GPG pinentry via Emacs minibuffer (fixes broken pinentry-curses in distrobox)
+(package! pinentry)
+
 ;; gptel - LLM client for programmatic and interactive use
 (package! gptel)
