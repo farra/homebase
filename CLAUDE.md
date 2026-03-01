@@ -208,6 +208,7 @@ When helping with this project:
 4. **Respect immutability** — Don't assume root access or system-level changes on Bazzite
 5. **Use the right justfile** — Project dev commands in `./justfile`, user-facing commands in `dot_homebase/justfile`
 6. **Be greedy with chezmoi** — Default to managing config files in chezmoi, not ignoring them. The goal is full environment replication across workstations. When a file has machine-specific values, use chezmoi templates to make it portable rather than excluding it via `.chezmoiignore`.
+7. **Three copies of dotfiles** — The chezmoi source (`~/.local/share/chezmoi/`) is an independent git clone of `farra/homebase`, not a symlink to any dev worktree. This means there are three copies of managed files: the **live file** (e.g. `~/.config/doom/config.el`), the **chezmoi source** (`~/.local/share/chezmoi/dot_config/doom/config.el`), and the **dev worktree** (`~/dev/me/homebase/dot_config/doom/config.el`). Changes in the dev worktree must be pushed and pulled into the chezmoi source separately. Use `chezmoi re-add <file>` to copy live files back into the chezmoi source, not into the dev worktree.
 
 ### Common Tasks
 

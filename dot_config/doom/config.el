@@ -501,6 +501,19 @@ Buffer names are like 'Claude Code Agent @ ProjectName' or 'Claude Code Agent @ 
 
 (add-hook 'kill-buffer-query-functions #'+agent-shell-confirm-kill)
 
+;; Mode-change protection for live agent sessions
+;; Prevents accidentally invoking M-x vterm-mode (or any other major mode)
+;; inside an agent-shell buffer, which destroys the shell-maker state and
+;; creates an unkillable zombie buffer.
+(defun +agent-shell-prevent-mode-change ()
+  "Block major mode changes in agent-shell buffers with live processes."
+  (when (and (bound-and-true-p agent-shell-mode)
+             (get-buffer-process (current-buffer))
+             (process-live-p (get-buffer-process (current-buffer))))
+    (user-error "Cannot change major mode in a live agent-shell buffer")))
+
+(add-hook 'change-major-mode-hook #'+agent-shell-prevent-mode-change)
+
 ;; Silent revert when agents are editing files
 ;; When an agent-shell process modifies a file that has an open buffer,
 ;; Emacs prompts to revert. This blocks the agent until answered.
