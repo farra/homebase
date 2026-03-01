@@ -136,6 +136,13 @@
 
 (setq auth-sources '("~/.authinfo.gpg"))
 
+;; Use Emacs minibuffer for GPG passphrase prompts instead of pinentry-curses
+;; (which is broken in vterm/distrobox). Requires pinentry-program in gpg-agent.conf.
+(use-package! pinentry
+  :config
+  (setq epa-pinentry-mode 'loopback)
+  (pinentry-start))
+
 ;; Justfile support: syntax highlighting + interactive recipe runner
 (use-package! just-mode
   :mode ("justfile\\'" "\\.just\\'"))
