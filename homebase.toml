@@ -107,7 +107,9 @@ macos-casks = [
 
 [macos]
 # Homebrew casks (GUI apps, macOS only)
-casks = ["emacs", "tailscale", "font-fira-code-nerd-font", "font-fira-mono-nerd-font"]
+casks = ["tailscale", "font-fira-code-nerd-font", "font-fira-mono-nerd-font"]
+# Gamedev on macOS: managed separately via Homebrew (godot-mono, dotnet, etc.)
+# The distrobox gamedev profile is Linux-specific; on macOS just `brew install`.
 
 [flatpaks]
 # Host-level desktop apps via Flatpak (Flathub)

@@ -198,6 +198,8 @@ else
     op_github_pat = "$OP_GITHUB_PAT"
     op_gpg_key = "$OP_GPG_KEY"
     gpg_key_fingerprint = "$GPG_KEY_FPR"
+    op_anthropic_key = ""
+    op_openai_key = ""
 TOML
         ok "Pre-seeded chezmoi config with 1Password item names"
     fi
@@ -207,7 +209,9 @@ TOML
 
     # Pre-populate known_hosts so chezmoi externals (forge clone via SSH) don't hang
     mkdir -p "$HOME/.ssh"
-    ssh-keyscan github.com >> "$HOME/.ssh/known_hosts" 2>/dev/null
+    if ! grep -q 'github\.com' "$HOME/.ssh/known_hosts" 2>/dev/null; then
+        ssh-keyscan github.com >> "$HOME/.ssh/known_hosts" 2>/dev/null
+    fi
 
     # chezmoi init with HTTPS URL (private repo, no SSH needed yet)
     # Use GIT_ASKPASS to avoid PAT appearing in process args

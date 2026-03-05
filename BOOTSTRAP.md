@@ -1,222 +1,436 @@
 # Bootstrap Guide
 
-Canonical walkthrough for bootstrapping a new machine with homebase.
+Canonical walkthrough for bootstrapping a new machine with homebase. This guide covers
+both Bazzite Linux and macOS. If you're reading this months from now and have forgotten
+everything, start here.
+
+---
 
 ## Prerequisites
 
-1. **1Password account** with these items in your **Private** vault (item names are configurable in `bootstrap/bazzite.sh`):
+You need a **1Password account** with these items in your **Private** vault:
 
-   | Item (default name)       | Field/Files                | Purpose                                         |
-   |---------------------------|----------------------------|-------------------------------------------------|
-   | SSH key item              | `private key`, `public key`| SSH key pair                                    |
-   | GitHub PAT item           | `credential`               | GitHub PAT with `repo` + `read:packages` scopes |
-   | GPG key item              | `public.asc`, `secret.asc` | GPG key for encrypting `~/.authinfo.gpg`        |
+| Item name                  | Type / Fields                            | Purpose                                |
+|----------------------------|------------------------------------------|----------------------------------------|
+| `cautomaton-ssh-key`       | SSH Key: `private key`, `public key`     | SSH key pair for GitHub                |
+| `github-pat`               | Login: `credential` field                | GitHub PAT (`repo` + `read:packages`)  |
+| `cautomaton-homebase-gpg`  | Secure Note: `public.asc`, `secret.asc`  | GPG key for `~/.authinfo.gpg`          |
 
-2. **Network access** to GitHub, Homebrew, and 1Password
+These item names are configured at the top of each bootstrap script (`OP_SSH_KEY`,
+`OP_GITHUB_PAT`, `OP_GPG_KEY`). Change them there if your items are named differently.
 
-## Bazzite (Primary Target)
+You also need **network access** to GitHub, Homebrew, 1Password, and (for Nix)
+the Determinate Systems installer.
 
-### Getting the Script to the Machine
+---
 
-Since the repo is private, you can't `curl` the bootstrap script. Options:
-- Copy-paste from another machine
-- USB drive
-- SCP from an already-bootstrapped machine
-- Dropbox / cloud storage
+## macOS
 
-### Running the Bootstrap
+### Quick Start
+
+The script is self-contained — no repo checkout needed. Copy-paste into a fresh terminal:
 
 ```bash
-bash bazzite.sh
+curl -fsSL https://raw.githubusercontent.com/farra/homebase/main/bootstrap/macos.sh -o /tmp/macos.sh
+bash /tmp/macos.sh
 ```
 
-The script runs 7 idempotent phases, each guarded by a stamp file in `~/.homebase-bootstrap/`:
+Or with a profile: `bash /tmp/macos.sh gamedev`
 
-**Phase 1: Homebrew** — Installs to `~/.linuxbrew` (no root, no rpm-ostree)
+### Phases
 
-**Phase 2: Host tools** — Installs formulas declared in `homebase.toml` `[host].tools` (currently `git`, `chezmoi`, `zsh`, `just`, `direnv`, `1password-cli`). Sets zsh as default shell via `chsh` (distrobox inherits host `$SHELL`).
+The script runs 8 idempotent phases, each guarded by a stamp file in `~/.homebase-bootstrap/`.
+Completed phases are skipped on re-run.
 
-**Phase 3: 1Password** — `op signin` (opens browser for authentication)
+| Phase | What | Details |
+|-------|------|---------|
+| 1. Homebrew | Package manager | `/opt/homebrew` (Apple Silicon) or `/usr/local` (Intel) |
+| 2. Bootstrap tools | `chezmoi`, `1password-cli`, `gnupg` | Minimum needed before chezmoi can clone the repo and import GPG keys |
+| 3. 1Password | `op signin` | Opens browser for authentication. Verifies vault access. |
+| 4. GPG keys | Import from 1Password | Public + secret key for `~/.authinfo.gpg` encryption |
+| 5. Dotfiles | `chezmoi init --apply` | Clones homebase repo, writes SSH keys, applies all config, clones `~/forge`. See [What chezmoi apply Does](#what-chezmoi-apply-does). |
+| 6. Host tools | Full `brew bundle` | Remaining formulas (`just`, `direnv`, `node`, `gum`), casks (`tailscale`, Nerd Fonts, extra fonts). Sets zsh as default shell if needed. |
+| 7. Nix | Determinate Systems installer | Native macOS install. Enables flakes by default. |
+| 8. Dev tools | `nix profile add` from flake | Same tools as the Linux distrobox image (ripgrep, fd, fzf, bat, eza, starship, emacs+vterm, etc.) installed directly into `~/.nix-profile/`. |
 
-**Phase 4: GPG keys** — Imports public and secret GPG keys from 1Password for authinfo encryption
-
-**Phase 5: Dotfiles** — Retrieves GitHub PAT from 1Password, runs `chezmoi init --apply` with PAT-embedded HTTPS URL. This:
-  - Clones the private repo via HTTPS (no SSH needed yet)
-  - Writes SSH keys to `~/.ssh/` from 1Password templates
-  - Switches chezmoi remote to SSH (so future `chezmoi update` uses SSH key, no PAT needed)
-  - Applies all dotfiles (zshrc, gitconfig, starship, Doom Emacs config)
-  - Creates encrypted `~/.authinfo.gpg` for Emacs/magit (GitHub PAT from 1Password, GPG-encrypted)
-  - Clones `~/forge` via `.chezmoiexternal.toml`
-  - Installs `~/.homebase/justfile` (user commands + worktree lifecycle)
-  - Installs AI tool configs (claude, codex, gemini settings)
-
-**Phase 6: Fonts** — Downloads FiraCode and FiraMono Nerd Fonts to `~/.local/share/fonts/NerdFonts/`
-
-**Phase 7: Distrobox** — Logs into GHCR with the PAT, pulls the baked image, creates distrobox `home`. Mounts host Homebrew (`/home/linuxbrew`) into the container so `brew` works inside distrobox.
+The chosen profile (`base` or `gamedev`) is saved to `~/.homebase/profile` so
+`homebase update` rebuilds the correct nix environment.
 
 ### After Bootstrap
 
 ```bash
-# Enter the dev environment (all tools pre-installed)
+# Open a NEW terminal (so zsh + starship + all nix tools load)
+
+# First-time setup: workspace dirs + Doom Emacs + AI agents
+homebase setup
+
+# Verify tools
+which emacs rg fd fzf bat just direnv chezmoi starship
+
+# Connect to Tailscale (GUI app — open from Applications)
+```
+
+### 1Password Desktop App (recommended)
+
+Install **1Password 8** from the App Store or 1password.com. Then enable CLI integration:
+
+**Settings > Developer > CLI integration**
+
+This lets the `op` CLI authenticate via Touch ID instead of manual sign-in. Without this,
+you'll see auth prompts or failures on every new terminal window (because `.zshrc`
+auto-loads runtime secrets via `op`).
+
+### Gamedev on macOS
+
+The Linux gamedev profile (Godot binary, dotnet-sdk, export templates) is baked into a
+custom Containerfile and doesn't translate to macOS. Install the gamedev stack directly:
+
+```bash
+brew install --cask godot-mono
+brew install dotnet
+```
+
+This variance is acceptable — the Containerfile gamedev layer is custom enough that
+1:1 parity isn't worth the abstraction cost.
+
+---
+
+## Bazzite Linux
+
+### Getting the Script to the Machine
+
+The repo is public, so you can clone it directly:
+
+```bash
+# If git is available (e.g. from a previous install)
+git clone https://github.com/farra/homebase.git ~/homebase-bootstrap
+cd ~/homebase-bootstrap && bash bootstrap/bazzite.sh
+```
+
+If git isn't available yet, copy `bootstrap/bazzite.sh` to the machine via USB, SCP,
+or copy-paste. The script needs to run from within the repo (it references
+`scripts/render-brewfile.sh` and `homebase.toml`).
+
+### Phases
+
+The script runs 9 idempotent phases, each guarded by a stamp file in `~/.homebase-bootstrap/`.
+
+| Phase | What | Details |
+|-------|------|---------|
+| 1. Homebrew | Package manager | Installs to `~/.linuxbrew` (no root, no rpm-ostree) |
+| 2. Host tools | `brew bundle` + shell | Formulas from `[host].tools`, `1password-cli` cask, sets zsh as default shell via `chsh` |
+| 3. 1Password | `op signin` | Opens browser for authentication. Verifies vault access. |
+| 4. GPG keys | Import from 1Password | Public + secret key for `~/.authinfo.gpg` encryption |
+| 5. Dotfiles | `chezmoi init --apply` | Same as macOS — clones repo, writes SSH keys, applies config, clones `~/forge`. See [What chezmoi apply Does](#what-chezmoi-apply-does). |
+| 6. Fonts | Download Nerd Fonts + extras | FiraCode, FiraMono to `~/.local/share/fonts/NerdFonts/`. Extra fonts (Lato, iA Writer) from URLs in `homebase.toml`. Runs `fc-cache`. |
+| 7. Distrobox | Pull image + create container | Logs into GHCR, pulls baked image, creates `home` distrobox. Mounts `/home/linuxbrew` into container. |
+| 8. Tailscale | Enable daemon | `systemctl enable --now tailscaled`. You still need to run `sudo tailscale up` manually. |
+| 9. Flatpaks | Install desktop apps | Apps from `[flatpaks]` in homebase.toml (Obsidian, Discord, Zed, etc.) |
+
+### After Bootstrap
+
+```bash
+# Enter the dev environment (all tools pre-installed in the image)
 distrobox enter home
 
-# First-time setup (workspace dirs + Doom Emacs + AI agents)
+# First-time setup: workspace dirs + Doom Emacs + AI agents
 homebase setup
 
 # Export Emacs to the KDE desktop
 homebase doom-export
 
-# Verify tools
+# Verify tools (inside distrobox)
 which emacs rg fd fzf bat just direnv chezmoi starship
-starship --version
+
+# Connect to Tailscale
+sudo tailscale up
 ```
 
-### Re-running
+### Note: Bazzite Requires the Repo
 
-The script is fully idempotent. Completed phases are skipped:
+Unlike the macOS script (which is self-contained), `bazzite.sh` must run from within
+the repo checkout because phase 2 uses `scripts/render-brewfile.sh` and `homebase.toml`
+before chezmoi has cloned the repo. This is a known limitation — the macOS script avoids
+it by deferring the full Brewfile to after chezmoi apply.
+
+---
+
+## Re-running / Resuming
+
+Both scripts are fully idempotent. Completed phases are skipped:
 
 ```bash
-bash bazzite.sh    # Skips all completed phases
+bash bootstrap/macos.sh     # Skips all completed phases
+bash bootstrap/bazzite.sh   # Same
 ```
 
 To re-run a specific phase, delete its stamp file:
 
 ```bash
-ls ~/.homebase-bootstrap/    # See completed phases
-rm ~/.homebase-bootstrap/05-dotfiles    # Re-run dotfiles phase
-bash bazzite.sh
+ls ~/.homebase-bootstrap/                    # See completed phases
+rm ~/.homebase-bootstrap/05-dotfiles         # Re-run dotfiles phase
+bash bootstrap/macos.sh                      # Only phase 5 runs
 ```
-
----
-
-## macOS (Future)
-
-Manual steps until a bootstrap script is written.
-
-### Steps
-
-```bash
-# 1. Homebrew
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-eval "$(/opt/homebrew/bin/brew shellenv)"
-
-# 2. Core tools + 1Password
-brew install chezmoi
-brew install --cask 1password-cli
-
-# 3. Authenticate
-eval "$(op signin)"
-
-# 4. Import GPG key for authinfo encryption
-op read "op://Private/<your-gpg-key-item>/homebase-authinfo-public.asc" | gpg --batch --import
-op read "op://Private/<your-gpg-key-item>/homebase-authinfo-secret.asc" | gpg --batch --import
-echo "<your-gpg-fingerprint>:6:" | gpg --batch --import-ownertrust
-
-# 5. Dotfiles (SSH keys, forge clone, encrypted authinfo, all configs)
-chezmoi init --apply <your-github-user>/homebase
-
-# 6. Remaining Homebrew packages (including Nerd Fonts)
-~/.local/share/chezmoi/scripts/render-brewfile.sh ~/.local/share/chezmoi/homebase.toml > /tmp/homebase.Brewfile
-brew bundle --file=/tmp/homebase.Brewfile --upgrade
-
-# 7. Nix (for project-level shells)
-curl --proto '=https' --tlsv1.2 -sSf -L https://install.determinate.systems/nix | sh
-```
-
-On macOS there's no distrobox — Nix runs natively. Use `just dev` for a nix develop shell, or use per-project flakes via cautomaton-develops.
-
----
-
-## WSL / Fedora (Future)
-
-Same flow as Bazzite. The `bazzite.sh` script should work on WSL Fedora with minimal changes (Homebrew path is the same).
 
 ---
 
 ## What chezmoi apply Does
 
-A single `chezmoi apply` handles:
+A single `chezmoi apply` handles all of these (on both platforms):
 
 | What               | How                                                                     |
 |--------------------|-------------------------------------------------------------------------|
-| SSH keys           | `private_dot_ssh/` templates → 1Password `onepasswordRead`              |
-| Git config         | `dot_gitconfig.tmpl` → templated with name/email                        |
-| Shell config       | `dot_zshrc.tmpl` → zsh + starship + plugins + aliases                   |
-| Login checks       | `dot_zprofile` → distrobox entry checks (chezmoi sync status)           |
-| Starship prompt    | `dot_config/starship.toml` → Nerd Font Symbols + nix shell detection    |
-| Doom Emacs config  | `dot_config/doom/`                                                      |
-| Emacs auth-source  | `run_onchange_create-authinfo-gpg.sh.tmpl` → GPG-encrypted `~/.authinfo.gpg` |
-| Forge repo         | `.chezmoiexternal.toml` → `git clone` to `~/forge`                      |
-| Homebase justfile  | `dot_homebase/justfile` → `~/.homebase/justfile` (user commands + worktrees) |
-| GitHub CLI         | `dot_config/gh/config.yml` → aliases and settings                       |
-| AI tool configs    | `dot_claude/`, `dot_codex/`, `dot_gemini/` → settings (not credentials) |
+| SSH keys           | `private_dot_ssh/` templates + `run_once_before_` script from 1Password |
+| SSH config         | `private_dot_ssh/config.tmpl` — `UseKeychain yes` on macOS             |
+| Git config         | `dot_gitconfig.tmpl` — name, email, signing                            |
+| Shell config       | `dot_zshrc.tmpl` — zsh + starship + plugins + aliases (platform-aware) |
+| Login checks       | `dot_zprofile` — chezmoi sync status on all platforms, nix daemon in distrobox |
+| Starship prompt    | `dot_config/starship.toml` — Nerd Font Symbols + nix shell detection   |
+| Doom Emacs config  | `dot_config/doom/` — packages, config, init                            |
+| Emacs auth-source  | `run_onchange_create-authinfo-gpg.sh.tmpl` — GPG-encrypted `~/.authinfo.gpg` |
+| Forge repo         | `.chezmoiexternal.toml` — `git clone` to `~/forge`                     |
+| Homebase justfile  | `dot_homebase/justfile` — user commands, worktrees, updates             |
+| GitHub CLI         | `dot_config/gh/config.yml` — aliases and settings                      |
+| AI tool configs    | `dot_claude/`, `dot_codex/`, `dot_gemini/` — settings (not credentials)|
 
-Externals (forge clone) run after file templates, so SSH keys are already on disk when the git clone happens.
+Externals (forge clone) run after file templates, so SSH keys are already on disk
+when the git clone happens.
+
+---
+
+## Updating
+
+After initial bootstrap, use the `homebase` alias to keep the machine current.
+This is what you run when you sit down at a machine after working elsewhere:
+
+```bash
+homebase update                # Everything: dotfiles + brew + nix tools + flatpaks + agents
+```
+
+Or update individual layers:
+
+```bash
+homebase update-dotfiles       # Pull + apply latest dotfiles (chezmoi update)
+homebase update-host           # Homebrew bundle (host tools + casks)
+homebase update-nix-tools      # Rebuild nix profile from latest flake (macOS only)
+homebase update-flatpaks       # Update Flatpak apps (Linux only)
+homebase agent update          # Update AI agents (claude, codex, gemini, ACP)
+homebase box rebuild           # Pull fresh image + recreate container (Linux only)
+```
+
+On macOS, the flow is: `chezmoi update` pulls the latest flake.nix + homebase.toml
+from git, then `update-nix-tools` rebuilds the nix profile from the updated flake.
+This is how changes made on your Bazzite workstation propagate to the Mac.
+
+On Linux, dev tools live in the container image (rebuilt by CI). Run `homebase box rebuild`
+to pull the latest image.
 
 ---
 
 ## Verification Checklist
 
-### Host (Layer 0)
+### Host (all platforms)
 
 - [ ] `brew --version` works
 - [ ] `echo $SHELL` shows zsh
 - [ ] `op account list` shows your account
 - [ ] `ssh -T git@github.com` authenticates as `farra`
-- [ ] `ls -la ~/.ssh/id_ed25519` shows permissions `600`
+- [ ] `ls -la ~/.ssh/id_ed25519` — permissions `600`
 - [ ] `git config user.name` returns your name
-- [ ] `gpg --list-secret-keys` shows the homebase key
-- [ ] `ls -la ~/.authinfo.gpg` exists (GPG-encrypted)
+- [ ] `gpg --list-secret-keys` shows the homebase GPG key
+- [ ] `ls -la ~/.authinfo.gpg` exists
 - [ ] `chezmoi status` shows no pending changes
 - [ ] `~/forge/` exists and is a git repo
-- [ ] `ls ~/.local/share/fonts/NerdFonts/` shows FiraCode and FiraMono files
 - [ ] `~/.homebase/justfile` exists
+- [ ] `homebase` alias works (try `homebase --list`)
 
-### Distrobox (Layer 1, Linux only)
+### macOS specific
+
+- [ ] `nix --version` works
+- [ ] `which rg fd fzf bat eza starship emacs` — all resolve to `~/.nix-profile/bin/`
+- [ ] `starship --version` runs
+- [ ] `cat ~/.homebase/profile` shows `base` or `gamedev`
+- [ ] Tailscale app opens from Applications
+- [ ] Nerd Fonts visible in terminal font picker (FiraCode Nerd Font)
+- [ ] 1Password desktop app: Settings > Developer > CLI integration is enabled
+
+### Bazzite specific
 
 - [ ] `distrobox enter home` works
-- [ ] `which brew` — host Homebrew available via volume mount
-- [ ] `which emacs rg fd fzf bat just direnv chezmoi starship` — all found
-- [ ] `which nu` — nushell available
+- [ ] `which brew` — host Homebrew available inside container
+- [ ] `which emacs rg fd fzf bat just direnv chezmoi starship nu` — all found
 - [ ] `emacs --version` runs
-- [ ] `starship --version` runs
-- [ ] `homebase setup` — workspace dirs + Doom + agents install
-- [ ] `doom doctor` — no critical issues
-- [ ] `homebase doom-export` — Emacs appears in desktop menu
-- [ ] Doom Emacs loads without errors from missing `~/forge/` paths
+- [ ] `homebase doom-export` — Emacs appears in KDE desktop menu
+- [ ] `ls ~/.local/share/fonts/NerdFonts/` shows FiraCode and FiraMono files
+- [ ] `tailscale status` shows connected
+- [ ] Flatpak apps installed (check `flatpak list`)
 
-### Shell
+### Shell (all platforms)
 
 - [ ] Starship prompt shows git branch in a repo
 - [ ] `nix develop` inside a project shows nix indicator in prompt
 - [ ] Tab completion works (case-insensitive)
 - [ ] Typing shows autosuggestions (ghost text from history)
 - [ ] Invalid commands highlighted red, valid commands green
+- [ ] `homebase setup` completes (workspace dirs + Doom Emacs + AI agents)
+- [ ] `doom doctor` — no critical issues
 
 ### Idempotency
 
-- [ ] Re-run `bash bazzite.sh` — all phases skip
+- [ ] Re-run bootstrap script — all phases skip
 - [ ] Re-run `chezmoi apply` — no changes
 
 ---
 
-## Updating
+## macOS vs Bazzite Architecture
 
-After initial bootstrap, use the `homebase` alias:
+On macOS there's no distrobox. Dev tools from `[container].packages` in homebase.toml
+are installed directly via `nix profile add` rather than baked into a container image.
+The same `flake.nix` (reading the same `homebase.toml`) drives both paths, so tool
+parity is maintained.
+
+| Layer | Bazzite | macOS |
+|-------|---------|-------|
+| Host tools | Homebrew (`~/.linuxbrew`) | Homebrew (`/opt/homebrew`) |
+| Dev tools | Distrobox image (Nix inside) | Nix profile (native) |
+| Desktop apps | Flatpak | Homebrew casks |
+| Fonts | Manual download to `~/.local/share/fonts/` | Homebrew cask |
+| Emacs | Nix in distrobox, exported to host | Nix profile |
+| Per-project envs | `nix develop` | `nix develop` |
+
+---
+
+## Architecture Notes
+
+### Why chezmoi clones via HTTPS (then switches to SSH)
+
+SSH keys don't exist until *after* `chezmoi apply` writes them from 1Password. So the
+bootstrap uses a PAT-embedded HTTPS URL for the initial clone. After apply, the script
+switches the chezmoi remote to SSH. All subsequent `chezmoi update` calls use the SSH
+key — no PAT needed.
+
+### Why the distrobox image is baked (Linux)
+
+All tools are pre-installed via Nix during the container image build. `distrobox enter home`
+gives you a fully equipped environment immediately — no bootstrap step inside the container.
+Doom Emacs and AI agents install into `$HOME` (via `homebase setup`) since they persist
+across container rebuilds.
+
+### distrobox shares $HOME and Homebrew (Linux)
+
+The `home` distrobox bind-mounts your real `$HOME`. Dotfiles applied by chezmoi on the
+host are visible inside the container. SSH keys, git config, fonts, all configs work in
+both contexts.
+
+Homebrew installs to `/home/linuxbrew/.linuxbrew` (outside `$HOME`). The distrobox is
+created with `--volume /home/linuxbrew:/home/linuxbrew` so `brew` works inside the
+container too.
+
+### 1Password vault name
+
+1Password's default vault is "Private" (not "Personal"). All templates use
+`op://Private/...`.
+
+### Three copies of dotfiles
+
+There are three copies of managed files:
+1. **Live file** — e.g. `~/.config/doom/config.el`
+2. **chezmoi source** — `~/.local/share/chezmoi/dot_config/doom/config.el`
+3. **Dev worktree** — `~/dev/me/homebase/dot_config/doom/config.el`
+
+Changes in the dev worktree must be pushed to git and pulled into the chezmoi source
+separately. Use `chezmoi re-add <file>` to copy live files back into the chezmoi source.
+
+---
+
+## Troubleshooting
+
+### 1Password CLI won't authenticate
 
 ```bash
-homebase update             # Update everything (dotfiles + host tools + agents)
-homebase update-dotfiles    # Just dotfiles
-homebase update-host        # Just Homebrew
-homebase update-agents      # Just AI agents (claude, codex, gemini)
-homebase distrobox-rebuild  # Pull fresh image + recreate container
+op account list          # Check if an account is configured
+eval "$(op signin)"      # Re-authenticate (browser/Touch ID)
+op whoami                # Verify session is active
+```
+
+On macOS: make sure 1Password desktop app is running and CLI integration is enabled
+(Settings > Developer > CLI integration).
+
+### SSH key not working
+
+```bash
+ssh -T git@github.com    # Test authentication
+ls -la ~/.ssh/            # id_ed25519 should be 600, pub should be 644
+ssh-add -l               # Check if key is loaded in agent
+```
+
+On macOS: if the key doesn't persist across reboots, verify `~/.ssh/config` has
+`UseKeychain yes` and `AddKeysToAgent yes` (managed by chezmoi).
+
+### chezmoi template errors
+
+```bash
+chezmoi diff             # Preview what chezmoi would change
+chezmoi doctor           # Check chezmoi health
+chezmoi status           # Show files that differ from source
+```
+
+### Distrobox image pull fails (Linux)
+
+If GHCR is unreachable or the image isn't published, build locally:
+
+```bash
+cd ~/dev/me/homebase     # or wherever the repo is checked out
+just build-image
+homebase box create
+```
+
+### Forge clone fails during chezmoi apply
+
+SSH keys must be installed before the forge clone (which uses SSH). chezmoi handles
+this ordering automatically (`run_once_before_` scripts run before externals). If it
+still fails:
+
+```bash
+ssh -T git@github.com    # Verify SSH works
+chezmoi apply            # Re-run (the external clone will retry)
+```
+
+### Starship prompt not showing
+
+```bash
+which starship           # Should be in ~/.nix-profile/bin/
+starship --version       # Verify it runs
+cat ~/.config/starship.toml           # Check config exists
+cat ~/.config/starship.conservative.toml  # Default profile
+```
+
+If starship is missing, the nix profile may not be installed:
+
+```bash
+# macOS: reinstall nix tools
+rm ~/.homebase-bootstrap/08-nix-tools
+bash bootstrap/macos.sh
+
+# Linux: enter distrobox (tools are in the image)
+distrobox enter home
+```
+
+### Nix tools missing or outdated (macOS)
+
+```bash
+homebase update-nix-tools    # Rebuild from latest flake
+# Or manually:
+nix profile list             # See what's installed
+nix profile add ~/.local/share/chezmoi#homebase-base-env
 ```
 
 ---
 
 ## Post-Bootstrap: Working with Worktrees
 
-Use `homebase` to manage projects via git worktrees. Bare clones live hidden in `~/dev/.worktrees/`; working copies are checked out into group dirs where Emacs and agents operate.
+Use `homebase` to manage projects via git worktrees. Bare clones live hidden in
+`~/dev/.worktrees/`; working copies are checked out into group dirs.
 
 ### First-time setup for a project
 
@@ -229,12 +443,13 @@ homebase clone jamandtea/some-project  # bare clone → .worktrees/some-project.
 ### Starting work (one worktree per task/agent)
 
 ```bash
-homebase wt homebase fix-auth          # → me/homebase-fix-auth (new branch)
-homebase wt homebase add-search        # → me/homebase-add-search (new branch)
-homebase wt some-project refactor jmt  # → jmt/some-project-refactor
+homebase wt homebase fix-auth          # → ~/dev/me/homebase-fix-auth (new branch)
+homebase wt homebase add-search        # → ~/dev/me/homebase-add-search (new branch)
+homebase wt some-project refactor jmt  # → ~/dev/jmt/some-project-refactor
 ```
 
-Each worktree gets its own branch. Open a persp-mode workspace in Emacs for each, spawn an agent-shell session, and the agent works in isolation.
+Each worktree gets its own branch. Open a persp-mode workspace in Emacs for each,
+spawn an agent-shell session, and the agent works in isolation.
 
 ### Checking status
 
@@ -253,84 +468,10 @@ The branch and any pushed commits survive. The directory is disposable.
 
 ---
 
-## Troubleshooting
-
-### 1Password CLI won't authenticate
-
-```bash
-op account list          # Check if signed in
-eval "$(op signin)"      # Re-authenticate
-```
-
-### SSH key permissions wrong
-
-chezmoi sets these automatically, but verify:
-```bash
-ls -la ~/.ssh/
-# id_ed25519 should be 600, id_ed25519.pub should be 644
-```
-
-### chezmoi template errors
-
-```bash
-chezmoi diff             # Preview what chezmoi will do
-chezmoi execute-template < ~/.local/share/chezmoi/private_dot_ssh/private_id_ed25519.tmpl
-```
-
-### Distrobox image pull fails
-
-If GHCR is unreachable or the image isn't published, build locally:
-```bash
-cd ~/dev/homebase   # or wherever the repo is checked out
-just build-image
-homebase distrobox-create
-```
-
-### Forge clone fails during chezmoi apply
-
-If SSH keys aren't working yet (first apply), chezmoi external will fail. Fix:
-```bash
-# Verify SSH works first
-ssh -T git@github.com
-
-# Then re-apply
-chezmoi apply
-```
-
-### Starship prompt not showing
-
-```bash
-which starship           # Should be in ~/.nix-profile/bin/
-starship --version       # Verify it runs
-cat ~/.config/starship.toml   # Check config exists
-```
-
----
-
-## Architecture Notes
-
-### Why chezmoi clones via HTTPS (then switches to SSH)
-
-`chezmoi init farra/homebase` uses HTTPS, not SSH. This is intentional — SSH keys don't exist until *after* `chezmoi apply` writes them. The bootstrap script uses a PAT-embedded URL for the private repo, then automatically switches the remote to SSH once keys are installed. All subsequent `chezmoi update` calls use SSH — no PAT needed.
-
-### Why the image is baked
-
-All tools are pre-installed via Nix in the container image. `distrobox enter home` gives you a fully equipped environment immediately — no bootstrap step inside the container. Only Doom Emacs and AI agents install into `$HOME` (via `homebase setup`) since they persist across container rebuilds.
-
-### distrobox shares $HOME (and Homebrew)
-
-The `home` distrobox bind-mounts your real `$HOME`. Dotfiles applied by chezmoi on the host are visible inside the container. SSH keys, git config, fonts, and all configs work in both contexts.
-
-On Linux, Homebrew installs to `/home/linuxbrew/.linuxbrew` (outside `$HOME`). The distrobox is created with `--volume /home/linuxbrew:/home/linuxbrew` so `brew` is available inside the container too. The zshrc automatically detects this path and adds it to `$PATH`.
-
-### 1Password vault name
-
-1Password's default vault is "Private" (not "Personal"). All templates use `op://Private/...`.
-
----
-
 ## Open Issues
 
-- [ ] **1Password CLI via Homebrew on Linux** — `brew install 1password-cli` needs verification. Fallback: direct binary download to `~/.local/bin/`
-- [ ] **GHCR package visibility** — Private repo defaults to private packages. May need `podman login` (which the bootstrap script does) or package visibility settings in GitHub
-- [ ] **Nothing tested on clean machines** — Full flow is untested on fresh Bazzite, WSL, or macOS
+- [ ] **Bazzite script requires repo checkout** — unlike macOS, `bazzite.sh` can't be
+  curled standalone (phase 2 needs the Brewfile renderer). Could restructure like macOS
+  (defer full brew bundle to after chezmoi).
+- [ ] **GHCR package visibility** — may need `podman login` or GitHub package visibility
+  settings for private images.

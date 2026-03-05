@@ -81,8 +81,7 @@ ENV PATH="/nix/var/nix/profiles/default/bin:$PATH"
 # Copy flake into image and install all tools
 COPY flake.nix flake.lock homebase.toml /tmp/homebase-flake/
 RUN cd /tmp/homebase-flake && \
-    nix profile install .#${FLAKE_ENV} \
-        --extra-experimental-features "nix-command flakes" && \
+    nix profile add .#${FLAKE_ENV} && \
     rm -rf /tmp/homebase-flake
 
 # Add nix profile to default PATH for all users

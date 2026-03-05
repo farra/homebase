@@ -209,8 +209,8 @@ wts:
 
 # ── Updates ──────────────────────────────────────────────────────────────
 
-# [any] Update everything (dotfiles + host tools + flatpaks + agents)
-update: update-dotfiles update-host update-flatpaks (agent "update")
+# [any] Update everything (dotfiles + host tools + dev tools + flatpaks + agents)
+update: update-dotfiles update-host update-nix-tools update-flatpaks (agent "update")
     @echo ""
     @echo "All updates complete."
 
@@ -244,6 +244,60 @@ update-host:
     trap 'rm -f "$tmp_brewfile"' EXIT
     "$RENDERER" "$TOML" > "$tmp_brewfile"
     _spin "Updating host tools (Homebrew)..." brew bundle --file="$tmp_brewfile" --upgrade
+
+# [host/macOS] Update dev tools installed via nix profile — macOS only
+update-nix-tools:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    HAS_GUM=false; command -v gum &>/dev/null && HAS_GUM=true
+    _spin() { if $HAS_GUM; then gum spin --spinner dot --title "$1" -- "${@:2}"; else echo "$1"; "${@:2}"; fi; }
+    if [[ -f /run/.containerenv ]]; then
+        echo "Inside a container — skipping nix profile update."
+        exit 0
+    fi
+    if [[ "$(uname -s)" != "Darwin" ]]; then
+        # On Linux, dev tools live in the distrobox image, not a nix profile.
+        # Use 'homebase box rebuild' to update container tools.
+        exit 0
+    fi
+    CHEZMOI_SOURCE="$(chezmoi source-path 2>/dev/null || echo "$HOME/.local/share/chezmoi")"
+    if [[ ! -f "$CHEZMOI_SOURCE/flake.nix" ]]; then
+        echo "ERROR: flake.nix not found in chezmoi source: $CHEZMOI_SOURCE"
+        exit 1
+    fi
+    # Read profile choice (default: base)
+    PROFILE="base"
+    if [[ -f "$HOME/.homebase/profile" ]]; then
+        PROFILE="$(cat "$HOME/.homebase/profile")"
+    fi
+    if [[ "$PROFILE" == "base" ]]; then
+        FLAKE_ENV="homebase-base-env"
+    elif [[ "$PROFILE" == "gamedev" ]]; then
+        FLAKE_ENV="homebase-gamedev-env"
+    else
+        echo "ERROR: Unknown profile '$PROFILE' in ~/.homebase/profile"
+        exit 1
+    fi
+    echo "Updating nix dev tools ($FLAKE_ENV)..."
+    # Check what homebase env (if any) is currently installed
+    CURRENT=$(nix profile list --json 2>/dev/null \
+        | jq -r '.elements | to_entries[] | select(.value.originalUrl // .value.url // "" | test("homebase")) | .key' 2>/dev/null \
+        | head -1)
+    if [[ -n "$CURRENT" ]]; then
+        if echo "$CURRENT" | grep -q "$FLAKE_ENV"; then
+            # Same profile — upgrade in place from the updated flake
+            _spin "Upgrading $FLAKE_ENV..." nix profile upgrade --regex 'homebase'
+        else
+            # Profile changed (e.g. base → gamedev) — remove old, add new
+            echo "  Switching profile: $CURRENT → $FLAKE_ENV"
+            nix profile remove --regex 'homebase'
+            _spin "Installing $FLAKE_ENV..." nix profile add "${CHEZMOI_SOURCE}#${FLAKE_ENV}"
+        fi
+    else
+        # No homebase entry yet — first install
+        _spin "Installing $FLAKE_ENV..." nix profile add "${CHEZMOI_SOURCE}#${FLAKE_ENV}"
+    fi
+    echo "Nix dev tools updated ($FLAKE_ENV)."
 
 # ── Flatpak Apps ─────────────────────────────────────────────────────────
 
