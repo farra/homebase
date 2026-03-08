@@ -207,6 +207,53 @@ wts:
         fi
     done
 
+# ── Nix Environment Cache ─────────────────────────────────────────────────
+
+# [box] Pre-cache nix/devbox environments for all projects under ~/dev
+warm-direnv:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "Scanning ~/dev for nix/devbox environments..."
+    found=0
+    failed=0
+
+    while IFS= read -r envrc; do
+        dir="$(dirname "$envrc")"
+        name="${dir#$HOME/dev/}"
+        found=$((found + 1))
+
+        if [[ -f "$dir/devbox.json" ]] && command -v devbox &>/dev/null; then
+            echo "── $name (devbox) ──"
+            if (cd "$dir" && devbox install) 2>&1; then
+                echo "  OK"
+            else
+                echo "  FAILED"
+                failed=$((failed + 1))
+            fi
+        elif [[ -f "$dir/flake.nix" ]]; then
+            echo "── $name (flake) ──"
+            if nix develop "$dir" --command true 2>&1; then
+                echo "  OK"
+            else
+                echo "  FAILED"
+                failed=$((failed + 1))
+            fi
+        else
+            echo "── $name (direnv) ──"
+            direnv allow "$dir" 2>/dev/null
+            if direnv exec "$dir" true 2>&1; then
+                echo "  OK"
+            else
+                echo "  FAILED"
+                failed=$((failed + 1))
+            fi
+        fi
+    done < <(find "$HOME/dev" -maxdepth 3 -name '.envrc' -type f 2>/dev/null | sort)
+
+    echo ""
+    echo "Done: $found environments found, $((found - failed)) cached, $failed failed."
+
 # ── Updates ──────────────────────────────────────────────────────────────
 
 # [any] Update everything (dotfiles + host tools + dev tools + flatpaks + agents)
