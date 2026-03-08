@@ -522,6 +522,38 @@ box action profile="base" name="":
             ;;
     esac
 
+# ── No Sleep ───────────────────────────────────────────────────────────
+# Prevent sleep/suspend so the machine stays reachable via Tailscale.
+
+# [host] Block or restore sleep (on|off|status) — keep machine awake for remote access
+nosleep action="status":
+    #!/usr/bin/env bash
+    set -euo pipefail
+    TARGETS="sleep.target suspend.target hibernate.target suspend-then-hibernate.target"
+    case "{{action}}" in
+        on)
+            echo "Blocking sleep/suspend/hibernate..."
+            sudo systemctl mask $TARGETS
+            echo "nosleep ON — machine will stay awake and reachable."
+            ;;
+        off)
+            echo "Restoring sleep/suspend/hibernate..."
+            sudo systemctl unmask $TARGETS
+            echo "nosleep OFF — normal sleep behavior restored."
+            ;;
+        status)
+            if systemctl is-enabled sleep.target 2>/dev/null | grep -q masked; then
+                echo "nosleep: ON (sleep is masked)"
+            else
+                echo "nosleep: OFF (normal sleep behavior)"
+            fi
+            ;;
+        *)
+            echo "Usage: homebase nosleep [on|off|status]"
+            exit 1
+            ;;
+    esac
+
 # ── Doom Emacs ───────────────────────────────────────────────────────────
 
 # [box] Install Doom Emacs (clone + install)
