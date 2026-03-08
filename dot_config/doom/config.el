@@ -406,21 +406,21 @@ Skips wrapping if already inside a nix shell (e.g., via direnv)."
 (defun +agent-shell--claude-client-with-devenv (orig-fn &rest args)
   "Wrap Claude client creation for nix/devbox."
   (apply #'+agent-shell--with-devenv
-         'agent-shell-anthropic-claude-command orig-fn args))
+         'agent-shell-anthropic-claude-acp-command orig-fn args))
 (advice-add 'agent-shell-anthropic-make-claude-client :around #'+agent-shell--claude-client-with-devenv)
 
 ;; Codex (OpenAI)
 (defun +agent-shell--codex-client-with-devenv (orig-fn &rest args)
   "Wrap Codex client creation for nix/devbox."
   (apply #'+agent-shell--with-devenv
-         'agent-shell-openai-codex-command orig-fn args))
+         'agent-shell-openai-codex-acp-command orig-fn args))
 (advice-add 'agent-shell-openai-make-codex-client :around #'+agent-shell--codex-client-with-devenv)
 
 ;; Gemini (Google)
 (defun +agent-shell--gemini-client-with-devenv (orig-fn &rest args)
   "Wrap Gemini client creation for nix/devbox."
   (apply #'+agent-shell--with-devenv
-         'agent-shell-google-gemini-command orig-fn args))
+         'agent-shell-google-gemini-acp-command orig-fn args))
 (advice-add 'agent-shell-google-make-gemini-client :around #'+agent-shell--gemini-client-with-devenv)
 
 ;; Agent Shell Sidebar - treemacs-style persistent side panel
