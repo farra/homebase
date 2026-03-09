@@ -332,6 +332,7 @@
                  (dir (expand-file-name
                        (concat "~/forge/vault/agent-shell/" project-name "/transcripts/")))
                  (filename (format-time-string "%F-%H-%M-%S.md")))
+            (make-directory dir t)
             (expand-file-name filename dir))))
 
   ;; Provider-specific bindings (after agent-shell loads)
