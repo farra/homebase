@@ -670,6 +670,15 @@ p4-login:
         echo "p4 not found — is this the gamedev container?"
         exit 1
     fi
+    # Ensure the connection is configured before trust/login. P4PORT must carry
+    # the ssl: prefix or p4 fails with "Client must add SSL protocol prefix to
+    # P4PORT" — e.g. on a freshly rebuilt box where p4-setup hasn't run yet
+    # (~/.p4enviro is gone). Auto-run p4-setup when the port isn't SSL.
+    CURRENT_PORT="$(p4 set P4PORT 2>/dev/null | sed -n 's/^P4PORT=\([^ ]*\).*/\1/p' || true)"
+    if [[ "$CURRENT_PORT" != ssl:* ]]; then
+        echo "P4PORT not configured for SSL (got '${CURRENT_PORT:-unset}') — running p4-setup first."
+        just p4-setup
+    fi
     OP_ITEM="${OP_PERFORCE:-perforce-jt}"
     if FPR="$(op read "op://Private/${OP_ITEM}/ssl fingerprint" 2>/dev/null)"; then
         p4 trust -i "$FPR"          # pin known fingerprint
