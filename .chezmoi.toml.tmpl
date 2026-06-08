@@ -11,6 +11,7 @@
     gpg_key_fingerprint = {{ promptStringOnce . "gpg_key_fingerprint" "GPG key fingerprint for authinfo encryption" | quote }}
     op_anthropic_key = {{ promptStringOnce . "op_anthropic_key" "1Password Anthropic API key item name (empty to skip)" | quote }}
     op_openai_key = {{ promptStringOnce . "op_openai_key" "1Password OpenAI API key item name (empty to skip)" | quote }}
+    op_perforce = {{ promptStringOnce . "op_perforce" "1Password Perforce item name (gamedev p4 login; empty to skip)" | quote }}
 
 [status]
     exclude = ["scripts"]

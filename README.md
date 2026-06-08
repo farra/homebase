@@ -38,11 +38,12 @@ Layer 2: Per-project toolchains (cautomaton-develops, separate repo)
 
 You need these items in your 1Password **Private** vault (item names are configurable — see `.chezmoi.toml.tmpl` and `bootstrap/bazzite.sh`):
 
-| Item (default name)       | Field/Files                 | Purpose                                         |
-|---------------------------|-----------------------------|-------------------------------------------------|
-| SSH key item              | `private key`, `public key` | SSH key pair                                    |
-| GitHub PAT item           | `credential`                | GitHub PAT with `repo` + `read:packages` scopes |
-| GPG key item              | `public.asc`, `secret.asc`  | GPG key for encrypting `~/.authinfo.gpg`        |
+| Item (default name)       | Field/Files                   | Purpose                                         |
+|---------------------------|-------------------------------|-------------------------------------------------|
+| SSH key item              | `private key`, `public key`   | SSH key pair                                    |
+| GitHub PAT item           | `credential`                  | GitHub PAT with `repo` + `read:packages` scopes |
+| GPG key item              | `public.asc`, `secret.asc`    | GPG key for encrypting `~/.authinfo.gpg`        |
+| `perforce-jt` (gamedev)   | `password`, `ssl fingerprint` | p4 login + depot trust — gamedev profile only   |
 
 ## Quick Start
 
@@ -155,6 +156,23 @@ The build pipeline is profile-aware:
 - `images/Containerfile` accepts `BASE_IMAGE` and `FLAKE_ENV`
 - `just build-variant <profile>` resolves profile metadata from `homebase.toml`
 - images are tagged as `ghcr.io/farra/homebase:<profile>-latest`
+
+## Perforce (gamedev profile)
+
+The `gamedev` image bakes the Perforce Helix Core CLI (`p4`, from Perforce's
+`rhel/9` repo). Connection config and auth are reproduced via `homebase` recipes
+rather than stored in the image:
+
+```bash
+homebase p4-setup    # set P4PORT/P4USER/P4CONFIG (also runs during 'homebase setup gamedev')
+homebase p4-login    # trust the depot SSL cert + log in (1Password item, else interactive)
+```
+
+The depot (`perforce.jamandtea.dev`) is **tailnet-only** — the host must be on
+Tailscale for `p4` to connect. Tickets, trust, and config live in the shared
+`$HOME` (`~/.p4tickets`, `~/.p4trust`, `~/.p4enviro`), so they survive box
+rebuilds. See [`docs/design/001-perforce-gamedev.org`](./docs/design/001-perforce-gamedev.org)
+for the full design.
 
 ## Input Remapper
 

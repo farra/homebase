@@ -61,11 +61,12 @@ setup profile="base": setup-core
     echo "Setup complete for profile: $profile"
 
 # [box] Profile-specific setup hook: gamedev (run inside gamedev distrobox)
-setup-profile-gamedev: godot-export godot-templates
+setup-profile-gamedev: godot-export godot-templates p4-setup
     @echo ""
     @echo "Gamedev profile setup complete."
     @echo "  - godot and godot-mono exported to host"
     @echo "  - Export templates linked"
+    @echo "  - Perforce client configured (run 'homebase p4-login' to authenticate)"
 
 # ── Workspace ────────────────────────────────────────────────────────────
 
@@ -637,6 +638,52 @@ godot-templates:
         fi
     done
     echo "Export templates available in Godot editor."
+
+# ── Perforce (gamedev profile) ─────────────────────────────────────────────
+# p4 is baked into the gamedev image (HB-001). Connection config and auth live
+# in the shared $HOME (~/.p4enviro, ~/.p4tickets, ~/.p4trust), so they survive
+# box rebuilds — these recipes recreate the non-secret config and the login.
+
+# [box] Configure Perforce client connection (run inside gamedev distrobox)
+p4-setup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v p4 &>/dev/null; then
+        echo "p4 not found — is this the gamedev container? (skipping)"
+        exit 0
+    fi
+    p4 set P4PORT=ssl:perforce.jamandtea.dev:1666
+    p4 set P4USER=afarr
+    p4 set P4CONFIG=.p4config
+    p4 set P4CHARSET=none
+    echo "Perforce client configured (P4PORT/P4USER/P4CONFIG/P4CHARSET in ~/.p4enviro)."
+    echo "Next: 'homebase p4-login' to trust the depot cert and authenticate."
+
+# [box] Trust the depot SSL cert and log in (run inside gamedev distrobox)
+# Pins the fingerprint + password from the 1Password "perforce-jt" item when
+# reachable; falls back to interactive prompts otherwise. Requires the host on
+# the tailnet — the depot (perforce.jamandtea.dev) is tailnet-only.
+p4-login:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if ! command -v p4 &>/dev/null; then
+        echo "p4 not found — is this the gamedev container?"
+        exit 1
+    fi
+    OP_ITEM="${OP_PERFORCE:-perforce-jt}"
+    if FPR="$(op read "op://Private/${OP_ITEM}/ssl fingerprint" 2>/dev/null)"; then
+        p4 trust -i "$FPR"          # pin known fingerprint
+    else
+        echo "1Password unavailable — trusting depot cert on first use (TOFU)."
+        p4 trust -y
+    fi
+    if PW="$(op read "op://Private/${OP_ITEM}/password" 2>/dev/null)"; then
+        printf '%s\n' "$PW" | p4 login
+    else
+        echo "1Password unavailable — enter your Perforce password when prompted."
+        p4 login
+    fi
+    p4 info
 
 # ── AI Agents ────────────────────────────────────────────────────────────
 #

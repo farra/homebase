@@ -18,6 +18,7 @@ FROM ${BASE_IMAGE}
 ARG FLAKE_ENV=homebase-base-env
 ARG DNF_PACKAGES=""
 ARG GODOT_VERSION=""
+ARG INSTALL_PERFORCE="false"
 
 LABEL com.github.containers.toolbox="true"
 LABEL org.opencontainers.image.source="https://github.com/farra/homebase"
@@ -40,6 +41,19 @@ RUN dnf install -y \
 
 # Profile-specific DNF packages (e.g. dotnet-sdk for Godot C# support)
 RUN if [ -n "$DNF_PACKAGES" ]; then dnf install -y $DNF_PACKAGES && dnf clean all; fi
+
+# Perforce Helix Core CLI (p4) from Perforce's official yum repo (HB-001).
+# No native Fedora repo exists; the rhel/9 el9 packages run on fedora-toolbox.
+# Gated on the gamedev profile via INSTALL_PERFORCE. Connection + auth are
+# configured at runtime by the p4-setup / p4-login recipes (dot_homebase/justfile),
+# since tickets/config live in the shared $HOME, not the image.
+RUN if [ "$INSTALL_PERFORCE" = "true" ]; then \
+    rpm --import https://package.perforce.com/perforce.pubkey && \
+    printf '[perforce]\nname=Perforce\nbaseurl=https://package.perforce.com/yum/rhel/9/x86_64/\nenabled=1\ngpgcheck=1\ngpgkey=https://package.perforce.com/perforce.pubkey\n' \
+      > /etc/yum.repos.d/perforce.repo && \
+    dnf install -y helix-cli && dnf clean all && \
+    p4 -V && echo "Perforce CLI installed"; \
+fi
 
 # Godot Engine from official GitHub releases (if version specified)
 # Downloaded directly to get latest builds; Fedora/Nix packages lag behind

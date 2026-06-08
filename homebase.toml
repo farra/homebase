@@ -78,6 +78,10 @@ flake_env = "homebase-gamedev-env"
 base_image = "registry.fedoraproject.org/fedora-toolbox:43"
 dnf_packages = ["dotnet-sdk-10.0"]
 godot_version = "4.6.1"
+# Bake the Perforce Helix Core CLI (p4) from Perforce's rhel/9 repo (HB-001).
+# Gated build arg → images/Containerfile. Connection/auth via the p4-setup /
+# p4-login recipes in dot_homebase/justfile (run inside the box).
+perforce = true
 
 [fonts]
 # Host-level fonts (not in container — terminal and display server are on the host)

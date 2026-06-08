@@ -1,6 +1,6 @@
 #+TITLE: 001 - Perforce CLI in the gamedev distrobox
 #+AUTHOR: J Aaron Farr
-#+STATUS: Accepted
+#+STATUS: Active
 #+CREATED: [2026-06-08]
 #+LAST_MODIFIED: [2026-06-08]
 #+SETUPFILE: ../../org-setup.org
@@ -155,7 +155,14 @@ client names are per-machine/per-tree, so they are *not* templated globally.
 ** Secrets & auth (1Password)
 
 Create one new item in the **Private** vault (homebase convention: item name →
-chezmoi var → ~op read~). Suggested name: =Perforce (J&T)=.
+chezmoi var → ~op read~). Name: =perforce-jt=.
+
+*Reference-safe name required.* ~op read~ rejects =op://= references whose item
+title contains characters like =(= / =)= (=invalid character in secret
+reference=). The first attempt used =Perforce (J&T)= and broke ~op read~ (the
+space in the =ssl fingerprint= field is fine — only the parens broke it). Keep
+1Password item titles kebab-case like every other homebase secret
+(=github-pat=, =cautomaton-ssh-key=). Created 2026-06-08 as =perforce-jt=.
 
 | Field             | Value                                                     | Purpose                          |
 |-------------------+----------------------------------------------------------+----------------------------------|
@@ -183,7 +190,7 @@ when ~op~ isn't authenticated inside the box:
 p4-login:
     #!/usr/bin/env bash
     set -euo pipefail
-    OP_ITEM="${OP_PERFORCE:-Perforce (J&T)}"
+    OP_ITEM="${OP_PERFORCE:-perforce-jt}"
     if FPR="$(op read "op://Private/${OP_ITEM}/ssl fingerprint" 2>/dev/null)"; then
         p4 trust -i "$FPR"          # pin known fingerprint
     else
@@ -223,16 +230,21 @@ prerequisite. CLI only; P4V and the server are out of scope.
 Implementation tasks. 01–02 + 05 are the core; 07 is the rebuild done on the
 second workstation.
 
-** TODO [HB-001-01] Add perforce build arg + profile flag                :p1:
+** DONE [HB-001-01] Add perforce build arg + profile flag                :p1:
+CLOSED: [2026-06-08]
 :PROPERTIES:
 :EFFORT: S
 :END:
 
 =homebase.toml= (~[profiles.gamedev]~: ~perforce = true~),
 =scripts/resolve-profile.sh= (parse → ~RESOLVED_PERFORCE~, default ="false"=),
-=justfile= (~--build-arg INSTALL_PERFORCE="$RESOLVED_PERFORCE"~).
+=justfile= (~--build-arg INSTALL_PERFORCE="$RESOLVED_PERFORCE"~). Also wired
+=.github/workflows/build-image.yml= (matrix ~perforce~: base ="false"=, gamedev
+="true"= → ~INSTALL_PERFORCE~ build-arg) — the spec missed this, but CI is what
+actually bakes + pushes the image, so the arg must flow through the matrix.
 
-** TODO [HB-001-02] Add gated Perforce install block to Containerfile     :p1:
+** DONE [HB-001-02] Add gated Perforce install block to Containerfile     :p1:
+CLOSED: [2026-06-08]
 :PROPERTIES:
 :EFFORT: S
 :END:
@@ -240,38 +252,47 @@ second workstation.
 =images/Containerfile= block from Design §Installation (repo + pubkey +
 ~helix-cli~), gated on ~INSTALL_PERFORCE~.
 
-** TODO [HB-001-03] Create the 1Password "Perforce (J&T)" item            :p1:
+** DONE [HB-001-03] Create the 1Password "perforce-jt" item              :p1:
+CLOSED: [2026-06-08]
 :PROPERTIES:
 :EFFORT: S
 :END:
 
-Private vault. Fields: =password=, =ssl fingerprint= (value in Design),
-=port=. Manual step.
+Private vault, item =perforce-jt= (LOGIN). Fields: =username= =afarr=,
+=password=, =ssl fingerprint= (value in Design), =port=. Created 2026-06-08;
+=op read 'op://Private/perforce-jt/ssl fingerprint'= verified. (Name kept
+reference-safe — see Secrets §.)
 
-** TODO [HB-001-04] Wire chezmoi var + secretspec entry                   :p2:
+** DONE [HB-001-04] Wire chezmoi var + secretspec entry                   :p2:
+CLOSED: [2026-06-08]
 :PROPERTIES:
 :EFFORT: S
 :END:
 
 =.chezmoi.toml.tmpl= (~op_perforce~ prompt) and =secretspec.toml= (~P4PASSWD~).
 
-** TODO [HB-001-05] Add p4-setup + p4-login recipes                       :p1:
+** DONE [HB-001-05] Add p4-setup + p4-login recipes                       :p1:
+CLOSED: [2026-06-08]
 :PROPERTIES:
 :EFFORT: M
 :END:
 
 =dot_homebase/justfile=: ~p4-setup~ (p4 set …) and ~p4-login~ (trust + login
 via ~op read~ with interactive fallback). Add ~p4-setup~ to
-~setup-profile-gamedev~. Re-add via chezmoi.
+~setup-profile-gamedev~. Re-add via chezmoi. *Note:* source edited in the dev
+worktree; propagate to the live =~/.homebase/justfile= via the three-copy flow
+(push → pull into chezmoi source → ~chezmoi apply~) before the recipes are
+runnable on a machine.
 
-** TODO [HB-001-06] Documentation                                        :p2:
+** DONE [HB-001-06] Documentation                                        :p2:
+CLOSED: [2026-06-08]
 :PROPERTIES:
 :EFFORT: S
 :END:
 
-Homebase =README.md= (a Perforce subsection + Tailscale note),
+Homebase =README.md= (a Perforce subsection + Tailscale note + prereq row),
 =BOOTSTRAP.md= prereq table (new 1Password item), and the
-=docs/design/README.org= index row for this doc.
+=docs/design/README.org= index row for this doc (status → Active).
 
 ** TODO [HB-001-07] Rebuild gamedev image + verify                        :p1:
 :PROPERTIES:

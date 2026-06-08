@@ -10,6 +10,7 @@ set -euo pipefail
 #   RESOLVED_BASE_IMAGE='...'
 #   RESOLVED_DNF_PACKAGES='...'   (space-separated, empty if not set)
 #   RESOLVED_GODOT_VERSION='...'  (empty if not set)
+#   RESOLVED_PERFORCE='...'       (true|false, default false)
 #
 # Pure bash — no python3 or external TOML parser required.
 # Works on a fresh Bazzite host before any tooling is installed.
@@ -33,6 +34,7 @@ flake_env=""
 base_image=""
 dnf_packages=""
 godot_version=""
+perforce=""
 in_section=false
 
 while IFS= read -r line; do
@@ -64,6 +66,8 @@ while IFS= read -r line; do
             base_image="${BASH_REMATCH[1]}"
         elif [[ "$stripped" =~ ^[[:space:]]*godot_version[[:space:]]*=[[:space:]]*\"([^\"]+)\" ]]; then
             godot_version="${BASH_REMATCH[1]}"
+        elif [[ "$stripped" =~ ^[[:space:]]*perforce[[:space:]]*=[[:space:]]*(true|false) ]]; then
+            perforce="${BASH_REMATCH[1]}"
         elif [[ "$stripped" =~ ^[[:space:]]*dnf_packages[[:space:]]*=[[:space:]]*\[([^]]*)\] ]]; then
             raw="${BASH_REMATCH[1]}"
             # Remove quotes and commas, collapse whitespace
@@ -94,3 +98,4 @@ printf "RESOLVED_FLAKE_ENV='%s'\n" "$flake_env"
 printf "RESOLVED_BASE_IMAGE='%s'\n" "$base_image"
 printf "RESOLVED_DNF_PACKAGES='%s'\n" "$dnf_packages"
 printf "RESOLVED_GODOT_VERSION='%s'\n" "$godot_version"
+printf "RESOLVED_PERFORCE='%s'\n" "${perforce:-false}"

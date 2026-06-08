@@ -35,6 +35,7 @@ build-variant profile: _require-runtime
         --build-arg FLAKE_ENV="$RESOLVED_FLAKE_ENV" \
         --build-arg DNF_PACKAGES="$RESOLVED_DNF_PACKAGES" \
         --build-arg GODOT_VERSION="$RESOLVED_GODOT_VERSION" \
+        --build-arg INSTALL_PERFORCE="$RESOLVED_PERFORCE" \
         -f images/Containerfile .
 
 # Build the default (base) homebase OCI image

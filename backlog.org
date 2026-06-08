@@ -93,6 +93,58 @@ transient =SQLite database is busy= warnings.
 Start the daemon explicitly during distrobox creation via =--init-hooks= or
 early in the shell profile to avoid startup races and concurrent DB contention.
 
+*** TODO Rebuild BOTH boxes (home + gamedev) for atuin parity         :p1:infra:
+:PROPERTIES:
+:EFFORT: 0:30
+:HANDOFF: Run from the HOST (distrobox is host-only): =homebase box rebuild= (home) AND =homebase box rebuild gamedev=. Do both — they share =~/.local/share/atuin=, so they must land on the same atuin version. After the gamedev rebuild, drop the per-box stopgap so the image binary is authoritative: =nix profile remove --regex atuin= (or the matching index). Verify in each box: =atuin --version= (expect 18.15.2) and =atuin status=. Gamedev also re-runs =homebase setup gamedev= (now includes p4-setup) + =homebase p4-login=. NOTE: gamedev rebuild should wait for the Perforce CI image (the HB-001 commit) so p4 is baked in the same pull.
+:WORKED_BY: claude-code, human
+:END:
+
+*Confirmed 2026-06-08:* both boxes are stale. The =home= box is on image
+=6b70d21f= (atuin *18.11.0*); the =gamedev= box is on =319fe3de= (also 18.11.0).
+Atuin refuses to start against the shared =~/.local/share/atuin/history.db=,
+which a newer atuin (>= 18.14.0) already migrated
+(=20260224000100 history author intent=):
+
+#+begin_example
+Error: migration 20260224000100 was previously applied but is missing in the resolved migrations
+#+end_example
+
+=$HOME= (and the atuin DBs) are shared across all boxes + host, so one newer
+atuin upgrades the DB and every older baked binary then breaks. "Patching" one
+box can re-break the other, so *solve it with version parity*: rebuild BOTH
+boxes from images built off the same =flake.lock= (structurally guaranteed —
+=homebase-base-env= and =homebase-gamedev-env= share one lock).
+
+*18.15.2 is sufficient — verified.* The shared =history.db= max migration is
+still =20260224000100= (shipped in 18.14.0); the 2026-06-08 stopgap (=nix profile
+install nixpkgs#atuin= → 18.16.1) added *no* new migration. So images at the
+locked 18.15.2 will NOT re-break. The remaining risk is the out-of-band 18.16.1
+stopgap in the gamedev profile being *newer* than the image — remove it on
+rebuild so no box runs an atuin newer than the baked one.
+
+CI rebuilds both =latest= and =gamedev-latest= when =Containerfile=/=flake.lock=/
+=homebase.toml= change; the HB-001 Perforce commit touches those, so it produces
+fresh images for both boxes in one go.
+
+Full incident write-up: =forge/vault/devenv/incidents/2026-06-08-atuin-migration-skew-gamedev.org=.
+
+*** TODO [HB-001] Perforce gamedev: verify p4-login after rebuild       :p1:infra:
+:PROPERTIES:
+:DESIGN: [[file:docs/design/001-perforce-gamedev.org::*Tasks][001 Tasks]]
+:EFFORT: 0:20
+:HANDOFF: Code + 1Password item done. Remaining: (1) set the =op_perforce= chezmoi var to =perforce-jt= (re-init or add to ~/.config/chezmoi/chezmoi.toml) so the recipe/secretspec resolve it by default. (2) After the gamedev box rebuild from the p4-baked image: =p4 -V=, =homebase p4-login=, =p4 info= connects (host must be on the tailnet — depot is tailnet-only) (HB-001-07). (3) Propagate the =dot_homebase/justfile= recipe edits to the live =~/.homebase/justfile= (push → pull into chezmoi source → =chezmoi apply=) so =homebase p4-setup/p4-login= exist on the machine. Recipes fall back to interactive prompts if =op= is unauthenticated in the box.
+:WORKED_BY: claude-code, human
+:END:
+
+HB-001 code is implemented (build arg + profile flag + CI matrix, Containerfile
+block, chezmoi/secretspec wiring, =p4-setup=/=p4-login= recipes, docs) and the
+1Password =perforce-jt= item exists (HB-001-03, created 2026-06-08; =op read
+'op://Private/perforce-jt/ssl fingerprint'= verified). The item was renamed from
+=Perforce (J&T)= → =perforce-jt= because =op read= rejects =(= in reference
+paths. Remaining is just the rebuild + verify (HB-001-07, shares the gamedev
+box rebuild above) and the chezmoi propagation of the live justfile.
+
 *** DONE Rebuild image with emacs-pgtk and revert font size hack      :p1:infra:
 CLOSED: [2026-02-21]
 :PROPERTIES:
