@@ -1,0 +1,314 @@
+#+TITLE: 001 - Perforce CLI in the gamedev distrobox
+#+AUTHOR: J Aaron Farr
+#+STATUS: Accepted
+#+CREATED: [2026-06-08]
+#+LAST_MODIFIED: [2026-06-08]
+#+SETUPFILE: ../../org-setup.org
+
+* Summary
+
+Bake the Perforce Helix Core command-line client (~p4~) into the homebase
+=gamedev= image and make its connection/auth setup reproducible via chezmoi,
+the in-container justfile, and a new 1Password item. Today ~p4~ is a manual
+~dnf install~ inside the running container, so it is invisible to homebase and
+is destroyed on every ~homebase box rebuild gamedev=. This doc specifies how to
+move it into the image + dotfiles + secrets so it survives rebuilds and can be
+reproduced on any workstation.
+
+Scope is the **CLI client only** (~p4~). The Perforce *server* (~p4d~, the J&T
+AWS depot) and the P4V GUI are out of scope (see Questions).
+
+* Motivation
+
+** Current state (discovered 2026-06-08)
+
+The =gamedev= box (~ghcr.io/farra/homebase:gamedev-latest~) has Perforce
+installed and working, but entirely outside homebase's control:
+
+- *Binary:* =/usr/bin/p4= → =/opt/perforce/bin/p4=, package
+  =p4-cli= + =p4-cli-base= ~2025.2-2907753.el9~ (Vendor: Perforce Software).
+- *How it got there:* a manual ~dnf install -y helix-cli~ run *inside the
+  running container* on 2026-03-23 (~dnf history~ ID 7), after a yum repo file
+  was dropped at =/etc/yum.repos.d/perforce.repo= pointing at
+  =https://package.perforce.com/yum/rhel/9/x86_64/=.
+- *Config* (~p4 set~, stored in =~/.p4enviro=):
+  - =P4PORT=ssl:perforce.jamandtea.dev:1666=
+  - =P4USER=afarr=
+  - =P4CLIENT=afarr_bazzite_infuse=
+  - =P4CONFIG=.p4config=
+  - charset =none=
+- *Auth/trust:* =~/.p4tickets= (from ~p4 login~) and =~/.p4trust= (SSL
+  fingerprint =89:4B:05:20:6A:F4:21:BD:50:99:FB:51:19:EB:31:03:A9:26:68:D7=).
+- *Network:* =perforce.jamandtea.dev= resolves to =100.116.75.10= — a
+  **Tailscale tailnet IP**. The depot is only reachable while the host is on
+  the tailnet.
+
+** Problems
+
+1. *Not reproducible.* No record exists in homebase (zero hits for
+   perforce/p4/helix across the repo) or in forge (forge's P4 notes are all
+   about the *server* side — AWS depot, backups, TeamCity — not this client).
+2. *Ephemeral.* ~p4~, the repo file, and the other hand-installed packages
+   (=dotnet-sdk=, =bc=, =zsh=, =fontconfig=) live only in the container's
+   overlay. Recreating the box from the image wipes them.
+3. *Secrets on the side.* The login password and the server SSL fingerprint
+   are not captured anywhere declarative; only the materialized
+   =~/.p4tickets=/=~/.p4trust= survive (because =$HOME= is shared with the
+   host), and those expire / can't be regenerated without the password.
+
+* Design
+
+Map the work onto homebase's three layers (see =homebase.toml= header):
+
+| Concern                          | Layer                | Mechanism                                  |
+|----------------------------------+----------------------+--------------------------------------------|
+| ~p4~ binary + repo               | Layer 1 (image)      | =images/Containerfile= gated RUN block     |
+| Non-secret connection config     | Workspace            | =dot_homebase/justfile= ~p4-setup~ recipe  |
+| Password + SSL fingerprint       | Secrets (1Password)  | new Private-vault item + ~p4-login~ recipe |
+| Per-workspace client/root        | Workspace            | per-dir =.p4config= (created on demand)     |
+
+** Installation (Layer 1 — the image)
+
+Perforce ships no native Fedora repo, only =rhel/N=. The =el9= packages run
+fine on the =fedora-toolbox:43= base (verified — they're what's running today),
+so we deliberately use the =rhel/9= repo on a Fedora base.
+
+*** Option A — dedicated gated RUN block (recommended)
+
+Mirror the existing Godot block: a self-contained, profile-gated step that owns
+the repo, GPG key, and install in one readable place. Add to
+=images/Containerfile= after the =DNF_PACKAGES= block:
+
+#+begin_src dockerfile
+ARG INSTALL_PERFORCE="false"
+
+# Perforce Helix Core CLI from Perforce's official yum repo.
+# No native Fedora repo exists; the rhel/9 el9 packages run on fedora-toolbox.
+RUN if [ "$INSTALL_PERFORCE" = "true" ]; then \
+    rpm --import https://package.perforce.com/perforce.pubkey && \
+    printf '[perforce]\nname=Perforce\nbaseurl=https://package.perforce.com/yum/rhel/9/x86_64/\nenabled=1\ngpgcheck=1\ngpgkey=https://package.perforce.com/perforce.pubkey\n' \
+      > /etc/yum.repos.d/perforce.repo && \
+    dnf install -y helix-cli && dnf clean all && \
+    p4 -V && echo "Perforce CLI installed"; \
+fi
+#+end_src
+
+Wiring (3 small edits, mirroring =godot_version=):
+
+- =homebase.toml=, ~[profiles.gamedev]~: add ~perforce = true~.
+- =scripts/resolve-profile.sh=: parse it → ~RESOLVED_PERFORCE~ (default
+  ="false"=), e.g. a branch alongside the ~godot_version~ matcher:
+  #+begin_src bash
+  elif [[ "$stripped" =~ ^[[:space:]]*perforce[[:space:]]*=[[:space:]]*(true|false) ]]; then
+      perforce="${BASH_REMATCH[1]}"
+  #+end_src
+  and ~printf "RESOLVED_PERFORCE='%s'\n" "${perforce:-false}"~.
+- =justfile=, ~build-variant~: add
+  ~--build-arg INSTALL_PERFORCE="$RESOLVED_PERFORCE"~.
+
+*** Option B — reuse =dnf_packages= + always-on repo
+
+Drop ~helix-cli~ into =gamedev='s existing ~dnf_packages~ array and add an
+*unconditional* repo-setup RUN block before the ~DNF_PACKAGES~ step. Fewer
+files touched (no =resolve-profile.sh= / =justfile= change), but it pollutes
+the =base= image with a Perforce repo definition and splits the perforce logic
+across the repo block and the toml array.
+
+*** Decision
+
+**Option A.** Consistency with the Godot pattern wins: one self-contained,
+profile-gated block, base image stays pristine, and the on/off switch lives
+next to =godot_version= in the profile table. Track the installed version by
+recording ~p4 -V~ output; hard-pinning is an open question.
+
+** Configuration (non-secret)
+
+P4PORT/P4USER/P4CONFIG/charset are not secret. Rather than chezmoi-manage
+=~/.p4enviro= (whose format ~p4~ owns and rewrites on ~p4 set~, causing drift),
+use an idempotent recipe that calls ~p4 set~ — same spirit as ~godot-export~
+being a recipe rather than a dotfile. Add to =dot_homebase/justfile=:
+
+#+begin_src makefile
+# [box] Configure Perforce client connection (run inside gamedev distrobox)
+p4-setup:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    p4 set P4PORT=ssl:perforce.jamandtea.dev:1666
+    p4 set P4USER=afarr
+    p4 set P4CONFIG=.p4config
+    p4 set P4CHARSET=none
+    echo "Perforce client configured. Next: 'homebase p4-login'."
+#+end_src
+
+Call it from the gamedev setup hook so a fresh box is configured automatically:
+
+#+begin_src makefile
+setup-profile-gamedev: godot-export godot-templates p4-setup
+#+end_src
+
+*Per-workspace clients.* Because =P4CONFIG=.p4config=, each depot working tree
+gets its own =.p4config= naming its =P4CLIENT= and =P4ROOT=. These are created
+on demand when you set up a workspace (=p4 client …= or a hand-written
+=.p4config=), not baked in. =afarr_bazzite_infuse= is the current example;
+client names are per-machine/per-tree, so they are *not* templated globally.
+
+** Secrets & auth (1Password)
+
+Create one new item in the **Private** vault (homebase convention: item name →
+chezmoi var → ~op read~). Suggested name: =Perforce (J&T)=.
+
+| Field             | Value                                                     | Purpose                          |
+|-------------------+----------------------------------------------------------+----------------------------------|
+| =password=        | (the ~afarr~ Perforce password)                          | ~p4 login~                       |
+| =ssl fingerprint= | =89:4B:05:20:6A:F4:21:BD:50:99:FB:51:19:EB:31:03:A9:26:68:D7= | pin server trust (no TOFU prompt) |
+| =port=            | =ssl:perforce.jamandtea.dev:1666=                        | reference / future templating    |
+
+Register it the same way as the other secrets:
+
+- =.chezmoi.toml.tmpl=:
+  #+begin_src
+  op_perforce = {{ promptStringOnce . "op_perforce" "1Password Perforce item name (empty to skip)" | quote }}
+  #+end_src
+- =secretspec.toml=, ~[profiles.default]~:
+  #+begin_src toml
+  P4PASSWD = { description = "Perforce login password (p4 login)", required = false }  # op://Private/<op_perforce>/password
+  #+end_src
+
+Login + trust recipe (=dot_homebase/justfile=). Pin the fingerprint from
+1Password when available; fall back to interactive prompts so this works even
+when ~op~ isn't authenticated inside the box:
+
+#+begin_src makefile
+# [box] Trust the depot SSL cert and log in (run inside gamedev distrobox)
+p4-login:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    OP_ITEM="${OP_PERFORCE:-Perforce (J&T)}"
+    if FPR="$(op read "op://Private/${OP_ITEM}/ssl fingerprint" 2>/dev/null)"; then
+        p4 trust -i "$FPR"          # pin known fingerprint
+    else
+        p4 trust -y                 # accept on first use (TOFU)
+    fi
+    if PW="$(op read "op://Private/${OP_ITEM}/password" 2>/dev/null)"; then
+        printf '%s\n' "$PW" | p4 login
+    else
+        p4 login                    # prompt interactively
+    fi
+    p4 info
+#+end_src
+
+Tickets land in =~/.p4tickets= (shared =$HOME=), so login persists across box
+rebuilds until the server-side ticket lifetime expires.
+
+** Network dependency
+
+The depot is on the tailnet (=100.116.75.10=). The gamedev box uses host
+networking, so host Tailscale must be up and the tailnet reachable for ~p4~ to
+connect. Worth a one-line note in the homebase README; not something the image
+build can guarantee.
+
+* Decision
+
+Bake ~p4~ into the gamedev image via a profile-gated Containerfile block
+(Option A); configure connection via an idempotent ~p4-setup~ recipe wired into
+~setup-profile-gamedev~; store the password + SSL fingerprint in a new Private
+1Password item consumed by a ~p4-login~ recipe. Document the Tailscale
+prerequisite. CLI only; P4V and the server are out of scope.
+
+* Tasks
+:PROPERTIES:
+:CATEGORY: tasks
+:END:
+
+Implementation tasks. 01–02 + 05 are the core; 07 is the rebuild done on the
+second workstation.
+
+** TODO [HB-001-01] Add perforce build arg + profile flag                :p1:
+:PROPERTIES:
+:EFFORT: S
+:END:
+
+=homebase.toml= (~[profiles.gamedev]~: ~perforce = true~),
+=scripts/resolve-profile.sh= (parse → ~RESOLVED_PERFORCE~, default ="false"=),
+=justfile= (~--build-arg INSTALL_PERFORCE="$RESOLVED_PERFORCE"~).
+
+** TODO [HB-001-02] Add gated Perforce install block to Containerfile     :p1:
+:PROPERTIES:
+:EFFORT: S
+:END:
+
+=images/Containerfile= block from Design §Installation (repo + pubkey +
+~helix-cli~), gated on ~INSTALL_PERFORCE~.
+
+** TODO [HB-001-03] Create the 1Password "Perforce (J&T)" item            :p1:
+:PROPERTIES:
+:EFFORT: S
+:END:
+
+Private vault. Fields: =password=, =ssl fingerprint= (value in Design),
+=port=. Manual step.
+
+** TODO [HB-001-04] Wire chezmoi var + secretspec entry                   :p2:
+:PROPERTIES:
+:EFFORT: S
+:END:
+
+=.chezmoi.toml.tmpl= (~op_perforce~ prompt) and =secretspec.toml= (~P4PASSWD~).
+
+** TODO [HB-001-05] Add p4-setup + p4-login recipes                       :p1:
+:PROPERTIES:
+:EFFORT: M
+:END:
+
+=dot_homebase/justfile=: ~p4-setup~ (p4 set …) and ~p4-login~ (trust + login
+via ~op read~ with interactive fallback). Add ~p4-setup~ to
+~setup-profile-gamedev~. Re-add via chezmoi.
+
+** TODO [HB-001-06] Documentation                                        :p2:
+:PROPERTIES:
+:EFFORT: S
+:END:
+
+Homebase =README.md= (a Perforce subsection + Tailscale note),
+=BOOTSTRAP.md= prereq table (new 1Password item), and the
+=docs/design/README.org= index row for this doc.
+
+** TODO [HB-001-07] Rebuild gamedev image + verify                        :p1:
+:PROPERTIES:
+:EFFORT: M
+:END:
+
+On the second workstation: ~just build-variant gamedev~ → ~just push-variant
+gamedev~ → ~homebase box rebuild gamedev~ → ~homebase setup gamedev~. Verify:
+~p4 -V~, ~homebase p4-login~, ~p4 info~ connects to the depot.
+
+* Questions
+:PROPERTIES:
+:CATEGORY: questions
+:END:
+
+** OPEN Hard-pin the Perforce version, or track latest?
+
+~helix-cli~ pulls the latest stable from the repo (today 2025.2). The CLI is
+backward-compatible with the server, so latest is usually safe and mirrors how
+we let the repo float. Pin (=p4-cli-<ver>=) only if a regression bites. Default:
+track latest, record the version in commit/notes.
+
+** OPEN Does ~op read~ work inside the gamedev distrobox?
+
+The ~p4-login~ recipe assumes ~op~ may be unauthenticated in-container and falls
+back to interactive prompts. If we want full automation, confirm whether the
+host 1Password CLI/socket is reachable from the box (and document enabling it).
+Non-blocking — interactive login + cached ticket works regardless.
+
+** OPEN P4V (visual client) — needed?
+
+Unreal/Godot artists often want the P4V GUI. It's a desktop app (not on
+Flathub), so it doesn't fit the CLI-in-image model cleanly — it'd be a host
+install or an exported binary. Deferred; revisit if a GUI workflow is required.
+
+** OPEN The =jmt-perforce-admin.pem= SSH key
+
+=~/.ssh/jmt-perforce-admin.pem= is for SSHing to the depot *host* for server
+admin — a J&T infra/ops concern, not the dev client. Out of scope here, but it
+should live in 1Password too (likely a separate "Perforce Admin" item).

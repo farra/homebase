@@ -23,6 +23,7 @@ Each document captures a decision, its rationale, and implementation tasks.
 | Doc | Title    | Status |
 |-----+----------+--------|
 | 000 | [[file:000-template.org][Template]] | N/A    |
+| 001 | [[file:001-perforce-gamedev.org][Perforce CLI in the gamedev distrobox]] | Accepted |
 
 * Elisp Setup
 :PROPERTIES:
