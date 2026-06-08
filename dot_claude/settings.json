@@ -5,7 +5,20 @@
   "enabledPlugins": {
     "rust-analyzer-lsp@claude-plugins-official": true,
     "gongfu@gongfu-claude-code": true,
-    "backlog@dev-agent-backlog": true
+    "backlog@dev-agent-backlog": true,
+    "notion-workspace-plugin@notion-plugin-marketplace": true
   },
-  "skipDangerousModePermissionPrompt": true
+  "extraKnownMarketplaces": {
+    "notion-plugin-marketplace": {
+      "source": {
+        "source": "github",
+        "repo": "makenotion/claude-code-notion-plugin"
+      }
+    }
+  },
+  "effortLevel": "xhigh",
+  "skipDangerousModePermissionPrompt": true,
+  "agentPushNotifEnabled": true,
+  "skipAutoPermissionPrompt": true,
+  "skipWorkflowUsageWarning": true
 }

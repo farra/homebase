@@ -27,3 +27,9 @@ bootstrap
 scripts
 docs
 .github
+
+# Claude Code plugin state — machine-specific install paths + churning
+# lastUpdated timestamps; regenerated per-machine. The enabledPlugins block in
+# dot_claude/settings.json is the real declaration, so these never need syncing.
+.claude/plugins/installed_plugins.json
+.claude/plugins/known_marketplaces.json
