@@ -84,10 +84,23 @@ fi
 # --init none: no systemd integration (not available during build)
 # --no-confirm: non-interactive
 # --extra-conf "sandbox = false": disable sandbox (can't set hostname in container builds)
-RUN curl -L https://install.determinate.systems/nix | sh -s -- install linux \
+#
+# SELinux workaround (repairs local `just build-image` on Bazzite/Universal Blue):
+# the installer's detect_selinux() = (/sys/fs/selinux exists) && (sestatus on PATH),
+# and there is no flag to disable it. On SELinux hosts, rootless `podman build`
+# leaves /sys/fs/selinux visible (podman#6879), so the installer runs
+# `semodule --install nix.pp`, which fails to compile CIL inside fedora-toolbox
+# (nix-installer#1719). That policy module is unneeded — this image runs under
+# distrobox. Moving sestatus out of PATH for the install flips detection to false
+# so provision_selinux is never planned; useradd/curl are untouched. On CI
+# (ubuntu, no sestatus) SES is empty and both mv's no-op, so the build is identical.
+RUN SES="$(command -v sestatus || true)"; [ -n "$SES" ] && mv "$SES" "$SES.off" || true; \
+    curl -L https://install.determinate.systems/nix | sh -s -- install linux \
     --no-confirm \
     --init none \
-    --extra-conf "sandbox = false"
+    --extra-conf "sandbox = false"; \
+    rc=$?; [ -n "$SES" ] && mv "$SES.off" "$SES" || true; \
+    exit $rc
 
 # Set up environment for nix commands
 ENV PATH="/nix/var/nix/profiles/default/bin:$PATH"
