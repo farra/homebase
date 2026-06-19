@@ -53,6 +53,19 @@
 (after! vterm
   (setq vterm-shell (or (getenv "SHELL") "/usr/bin/zsh")))
 
+;; ghostel: terminal emulator on libghostty-vt (vterm alternative; trialing).
+;; Native module is a prebuilt .so that auto-downloads on first `M-x ghostel'
+;; (ghostel-module-auto-install defaults to `ask'). No build toolchain needed;
+;; if the prebuilt won't load in the distrobox, `M-x ghostel-module-compile'
+;; (needs zig). Ghostel bundles + advertises its own terminfo to child
+;; processes, so it's independent of the host xterm-ghostty terminfo.
+(use-package! ghostel
+  :commands (ghostel ghostel-project)
+  :init
+  (map! :leader :desc "Ghostel" "o g" #'ghostel)  ; SPC o g (alongside vterm's o t)
+  :config
+  (setq ghostel-shell (or (getenv "SHELL") "/usr/bin/zsh")))
+
 ;; If you use `org' and don't want your org files in the default location below,
 ;; change `org-directory'. It must be set before org loads!
 (when (file-directory-p "~/forge/")

@@ -78,3 +78,6 @@
 
 ;; gptel - LLM client for programmatic and interactive use
 (package! gptel)
+
+;; ghostel - terminal emulator powered by libghostty-vt (vterm alternative)
+(package! ghostel)
