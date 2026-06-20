@@ -7,3 +7,8 @@
 font-family = FiraCode Nerd Font Mono
 font-style  = Medium
 font-size   = 16
+
+# Initial window size, in grid cells (columns x rows). Ghostty clamps to the
+# monitor work area, so generous values are safe. Adjust to taste.
+window-width  = 180
+window-height = 48
