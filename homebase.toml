@@ -87,6 +87,7 @@ perforce = true
 # Host-level fonts (not in container — terminal and display server are on the host)
 # Bazzite: downloaded to ~/.local/share/fonts/ during bootstrap
 # macOS: installed via Homebrew cask
+# Preferences & roles (which font for what, and why): forge vault/devenv/typography.org
 nerd-fonts = ["FiraCode", "FiraMono"]
 
 [fonts.extra]
