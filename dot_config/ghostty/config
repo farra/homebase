@@ -1,0 +1,9 @@
+# Ghostty configuration — managed by homebase (chezmoi source: dot_config/ghostty/config)
+# Applied to ~/.config/ghostty/config. Docs: https://ghostty.org/docs/config
+# Reload in a running ghostty with the reload-config keybind, or restart the app.
+
+# Font — replicates the prior ptyxis setup "FiraCode Nerd Font Mono Medium 16".
+# font-family must match the fontconfig family; font-style selects the named face.
+font-family = FiraCode Nerd Font Mono
+font-style  = Medium
+font-size   = 16
