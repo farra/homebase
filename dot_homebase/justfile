@@ -797,16 +797,32 @@ agent action name="all":
 
     _install_acp() {
         echo "Installing ACP adapters for agent-shell..."
-        npm install -g @zed-industries/claude-agent-acp
-        npm install -g @zed-industries/codex-acp
+        _migrate_acp_packages
+        npm install -g @agentclientprotocol/claude-agent-acp
+        npm install -g @agentclientprotocol/codex-acp
         _install_agy_acp_server
         echo "ACP adapters installed (claude-agent-acp, codex-acp, agy_acp_server)"
     }
 
     _update_acp() {
-        npm install -g @zed-industries/claude-agent-acp
-        npm install -g @zed-industries/codex-acp
+        _migrate_acp_packages
+        npm install -g @agentclientprotocol/claude-agent-acp
+        npm install -g @agentclientprotocol/codex-acp
         _install_agy_acp_server
+    }
+
+    # The ACP adapters moved from @zed-industries to @agentclientprotocol
+    # (2026). Same bin names (claude-agent-acp, codex-acp), so the old global
+    # packages must go first or npm refuses to overwrite their bin links.
+    # claude-code-acp is the adapter's pre-rename name and is long dead.
+    _migrate_acp_packages() {
+        local old
+        for old in @zed-industries/claude-agent-acp @zed-industries/codex-acp @zed-industries/claude-code-acp; do
+            if npm ls -g --depth=0 "$old" &>/dev/null; then
+                echo "Removing deprecated $old"
+                npm uninstall -g "$old"
+            fi
+        done
     }
 
     # Antigravity's ACP server is a separate binary from `agy' (which has no
