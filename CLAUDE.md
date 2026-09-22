@@ -100,7 +100,7 @@ tools = ["git", "chezmoi", "zsh", "just", "direnv", "node"]
 
 [container]   # Nix flake tools baked into the image
 packages = ["ripgrep", "fd", "fzf", "bat", "eza", "starship", ...]
-include = ["emacs-vterm"]  # special package expressions from flake.nix
+include = ["emacs-native"]  # special package expressions from flake.nix
 
 [fonts]       # Host-level Nerd Fonts
 nerd-fonts = ["FiraCode", "FiraMono"]

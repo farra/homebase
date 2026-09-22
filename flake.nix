@@ -23,9 +23,13 @@
         # macOS: standard emacs (Cocoa/NS backend)
         emacsPackage = if pkgs.stdenv.isLinux then pkgs.emacs-pgtk else pkgs.emacs;
 
+        # emacs-native: Emacs plus packages whose native parts (dynamic modules,
+        # helper binaries) must be compiled against this exact Emacs/toolchain.
+        # Doom uses them via `(package! <name> :built-in 'prefer)'.
         specialIncludes = {
-          emacs-vterm = emacsPackage.pkgs.withPackages (epkgs: with epkgs; [
+          emacs-native = emacsPackage.pkgs.withPackages (epkgs: with epkgs; [
             vterm
+            pdf-tools
           ]);
         };
 

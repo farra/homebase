@@ -83,3 +83,8 @@
 
 ;; ghostel - terminal emulator powered by libghostty-vt (vterm alternative)
 (package! ghostel)
+
+;; pdf-tools comes prebuilt from Nix (flake include `emacs-native'), so
+;; epdfinfo is compiled against the image's poppler instead of needing
+;; autoconf + poppler-glib headers in the box. Same pattern as vterm.
+(package! pdf-tools :built-in 'prefer)
