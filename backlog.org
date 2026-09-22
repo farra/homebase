@@ -66,7 +66,7 @@ These should use =~= or =$HOME= expansion instead. They're guarded with =file-di
 
 fzf keybinding sourcing in =dot_zshrc.tmpl= checks Nix profile and =/usr/share/fzf/= but has no fallback for Homebrew's fzf path (e.g. =~/.linuxbrew/opt/fzf/shell/= or =/opt/homebrew/opt/fzf/shell/=). Matters for macOS native usage.
 
-*** WIP Add trusted-users to Nix config in Containerfile              :p1:infra:
+*** DONE Add trusted-users to Nix config in Containerfile              :p1:infra:
 :PROPERTIES:
 :EFFORT: 0:15
 :HANDOFF:
@@ -84,9 +84,9 @@ trusted-users = root @wheel
 User =jaaron= is in the =wheel= group. Without this, project-level flake
 substituter configs are ignored and some operations may be slower.
 
-*2026-09-22:* implemented; verify after the rebuild (=nix store info= shows =Trusted: 1=).
+*Done 2026-09-22.* Verified in the rebuilt =home= box: =nix store info= shows =Trusted: 1=.
 
-*** WIP Start nix-daemon in distrobox init-hooks                      :p1:infra:
+*** DONE Start nix-daemon in distrobox init-hooks                      :p1:infra:
 :PROPERTIES:
 :EFFORT: 0:30
 :HANDOFF:
@@ -101,14 +101,16 @@ transient =SQLite database is busy= warnings.
 Start the daemon explicitly during distrobox creation via =--init-hooks= or
 early in the shell profile to avoid startup races and concurrent DB contention.
 
-*2026-09-22:* implemented; verify after the rebuild (=ps= shows one root nix-daemon started at box start, no =sudo= parent).
+*Done 2026-09-22.* Verified: each box's daemon is a child of distrobox's =entrypoint=, with no =sudo= parent. =ps= shows two because distrobox shares the host's process namespace (one for =home=, one for =gamedev=). The =dot_zprofile= ping-guarded start stays as a fallback.
 
-*** WIP Rebuild BOTH boxes (home + gamedev) for atuin parity         :p1:infra:
+*** DONE Rebuild BOTH boxes (home + gamedev) for atuin parity         :p1:infra:
 :PROPERTIES:
 :EFFORT: 0:30
 :HANDOFF: Run from the HOST (distrobox is host-only): =homebase box rebuild= (home) AND =homebase box rebuild gamedev=. Do both — they share =~/.local/share/atuin=, so they must land on the same atuin version. After the gamedev rebuild, drop the per-box stopgap so the image binary is authoritative: =nix profile remove --regex atuin= (or the matching index). Verify in each box: =atuin --version= (expect 18.15.2) and =atuin status=. Gamedev also re-runs =homebase setup gamedev= (now includes p4-setup) + =homebase p4-login=. NOTE: gamedev rebuild should wait for the Perforce CI image (the HB-001 commit) so p4 is baked in the same pull.
 :WORKED_BY: claude-code, human
 :END:
+
+*Done 2026-09-22.* Both boxes rebuilt back to back from the 2026-09-22 lock; both report atuin *18.21.0*, and the gamedev per-user stopgap is gone (=nix profile list= has no atuin). Run notes: =forge/vault/devenv/homebase/rebuild-2026-09-22-emacs31-runbook.org=.
 
 *2026-09-22:* flake.lock bumped (nixpkgs 2026-09-22) — images now carry atuin *18.21.0* and Emacs *31.1*. Same rule applies: the first box on 18.21 may migrate =history.db=, so rebuild both back to back. No atuin on the host.
 
@@ -156,6 +158,8 @@ block, chezmoi/secretspec wiring, =p4-setup=/=p4-login= recipes, docs) and the
 =Perforce (J&T)= → =perforce-jt= because =op read= rejects =(= in reference
 paths. Remaining is just the rebuild + verify (HB-001-07, shares the gamedev
 box rebuild above) and the chezmoi propagation of the live justfile.
+
+*2026-09-22:* (1) =op_perforce = "perforce-jt"= is set in chezmoi.toml. (3) The live =~/.homebase/justfile= has =p4-setup=/=p4-login=. The gamedev box was rebuilt from the p4-baked image and =p4 -V= reports 2026.1. *Remaining: only (2)*: =homebase p4-login= and =p4 info= against the depot (needs the tailnet).
 
 *** DONE Rebuild image with emacs-pgtk and revert font size hack      :p1:infra:
 CLOSED: [2026-02-21]
