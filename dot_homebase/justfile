@@ -796,13 +796,38 @@ agent action name="all":
         echo "Installing ACP adapters for agent-shell..."
         npm install -g @zed-industries/claude-agent-acp
         npm install -g @zed-industries/codex-acp
-        echo "ACP adapters installed (claude-agent-acp, codex-acp)"
-        echo "Note: agy has no ACP mode yet — the agent-shell Google binding is disabled."
+        _install_agy_acp_server
+        echo "ACP adapters installed (claude-agent-acp, codex-acp, agy_acp_server)"
     }
 
     _update_acp() {
         npm install -g @zed-industries/claude-agent-acp
         npm install -g @zed-industries/codex-acp
+        _install_agy_acp_server
+    }
+
+    # Antigravity's ACP server is a separate binary from `agy' (which has no
+    # ACP mode). Resolve the current release from the ACP registry and put it
+    # on PATH as agy_acp_server.par, the name agent-shell-antigravity expects.
+    # The .par bundle is ~1.9GB, so skip the download when the registry still
+    # points at the archive already installed.
+    _install_agy_acp_server() {
+        local os arch platform url tmp stamp="$HOME/.local/bin/.agy_acp_server.version"
+        case "$(uname -s)" in Darwin) os=darwin ;; *) os=linux ;; esac
+        case "$(uname -m)" in x86_64|amd64) arch=x86_64 ;; aarch64|arm64) arch=aarch64 ;; *) arch="$(uname -m)" ;; esac
+        platform="${os}-${arch}"
+        url=$(curl -fsSL https://raw.githubusercontent.com/agentclientprotocol/registry/main/antigravity-acp/agent.json \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin)["distribution"]["binary"][sys.argv[1]]["archive"])' "$platform") || {
+            echo "WARN: no agy_acp_server release for $platform in the ACP registry"; return 0; }
+        if [[ -x "$HOME/.local/bin/agy_acp_server.par" && "$(cat "$stamp" 2>/dev/null)" == "$url" ]]; then
+            echo "agy_acp_server up to date: $(basename "$url")"; return 0
+        fi
+        tmp=$(mktemp -d)
+        curl -fsSL "$url" -o "$tmp/server.zip" && unzip -o -q "$tmp/server.zip" -d "$tmp" \
+            && install -m 755 "$tmp/agy_acp_server.par" "$HOME/.local/bin/agy_acp_server.par" \
+            && echo "$url" > "$stamp" \
+            && echo "agy_acp_server installed: $(basename "$url")"
+        rm -rf "$tmp"
     }
 
     all_agents=(claude claude-desktop codex antigravity acp)

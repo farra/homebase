@@ -20,7 +20,7 @@ chezmoi reports two files modified but not synced:
 
 Decide whether to =chezmoi apply= to overwrite local, =chezmoi add= to capture local changes, or add to =.chezmoiignore=.
 
-*** TODO Fix Doom init.el typo: +onssave -> +onsave                   :p1:hygiene:
+*** DONE Fix Doom init.el typo: +onssave -> +onsave                   :p1:hygiene:
 :PROPERTIES:
 :EFFORT: 0:15
 :HANDOFF:
@@ -29,7 +29,9 @@ Decide whether to =chezmoi apply= to overwrite local, =chezmoi add= to capture l
 
 In =dot_config/doom/init.el=, line 59 has =(format +onssave)= which should be =(format +onsave)=.
 
-*** TODO Remove hardcoded /home/jaaron paths in config.el             :p1:hygiene:
+*Done 2026-09-22.* Note this turns format-on-save on for the first time — the typo'd flag was silently ignored.
+
+*** DONE Remove hardcoded /home/jaaron paths in config.el             :p1:hygiene:
 :PROPERTIES:
 :EFFORT: 0:30
 :HANDOFF:
@@ -41,6 +43,8 @@ In =dot_config/doom/init.el=, line 59 has =(format +onssave)= which should be =(
 - =/home/jaaron/dev/ref/agent-shell=
 
 These should use =~= or =$HOME= expansion instead. They're guarded with =file-directory-p= so they fail gracefully, but won't work for other usernames or machines.
+
+*Done 2026-09-22 — removed outright.* Worse than non-portable: the May 2026 checkouts in =~/dev/ref= (agent-shell 0.51.1, acp 0.11.3) were prepended to =load-path= and shadowed the straight-managed 0.78.2.
 
 *** TODO Configure secretspec provider                                :p2:infra:
 :PROPERTIES:

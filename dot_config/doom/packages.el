@@ -62,6 +62,8 @@
   :recipe (:host github :repo "xenodium/acp.el"))
 (package! agent-shell
   :recipe (:host github :repo "xenodium/agent-shell"))
+;; acp, shell-maker, and agent-shell deliberately carry no :pin — they track
+;; upstream main, and `doom sync -u' / `doom upgrade' pulls the latest.
 
 ;; Agent Shell companion packages
 (package! agent-shell-sidebar
