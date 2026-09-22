@@ -58,15 +58,49 @@
 ;; Ghostel tunes its own buffers (undo, font-lock, process read buffering,
 ;; hl-line); leave ghostel-timer-delay at its default — lowering it slows
 ;; bulk output. Check `describe-mode' in a ghostel buffer before tuning.
-;; Native module is a prebuilt .so that auto-downloads on first `M-x ghostel'
-;; (ghostel-module-auto-install defaults to `ask'). No build toolchain needed;
-;; if the prebuilt won't load in the distrobox, `M-x ghostel-module-compile'
+;; Native module is a prebuilt .so fetched from GitHub releases on first use.
+;; It lives in straight's build dir, so every rebuild of ghostel deletes it;
+;; auto-install is set to `download' so that is silent rather than a prompt.
+;; ghostel comes from straight (latest), not Nix: nixpkgs lags upstream by a
+;; few releases. If the prebuilt won't load, `M-x ghostel-module-compile'
 ;; (needs zig). Ghostel bundles + advertises its own terminfo to child
 ;; processes, so it's independent of the host xterm-ghostty terminfo.
+(defun +ghostel/toggle (arg)
+  "Toggle a ghostel popup at the project root, one per workspace.
+Mirrors `+vterm/toggle'.  With prefix ARG, recreate the terminal."
+  (interactive "P")
+  (let* ((name (format "*doom:ghostel-popup:%s*"
+                       (if (bound-and-true-p persp-mode)
+                           (safe-persp-name (get-current-persp))
+                         "main")))
+         (buf (get-buffer name)))
+    (when (and arg (buffer-live-p buf))
+      (let (kill-buffer-query-functions)
+        (kill-buffer buf))
+      (setq buf nil))
+    (if-let* ((win (and buf (get-buffer-window buf))))
+        ;; A popup made the sole window (e.g. after C-x 1) can't be deleted.
+        (if (window-deletable-p win)
+            (delete-window win)
+          (with-selected-window win (bury-buffer)))
+      (let ((default-directory (or (doom-project-root) default-directory))
+            (ghostel-buffer-name name))
+        (ghostel)))))
+
 (use-package! ghostel
   :commands (ghostel ghostel-project)
   :init
-  (map! :leader :desc "Ghostel" "o g" #'ghostel)  ; SPC o g (alongside vterm's o t)
+  (setq ghostel-module-auto-install 'download)
+  ;; ghostel takes Doom's terminal keys; vterm moves to o v / o V.
+  ;; This runs after :config default, so it overrides the :term vterm bindings.
+  (map! :leader
+        :desc "Toggle ghostel popup"  "o t" #'+ghostel/toggle
+        :desc "Open ghostel here"     "o T" #'ghostel-project
+        :desc "Ghostel"               "o g" #'ghostel
+        :desc "Toggle vterm popup"    "o v" #'+vterm/toggle
+        :desc "Open vterm here"       "o V" #'+vterm/here)
+  (set-popup-rule! "^\\*doom:ghostel-popup"
+    :size 0.25 :vslot -4 :select t :quit nil :ttl 0)
   :config
   (setq ghostel-shell (or (getenv "SHELL") "/usr/bin/zsh")))
 
