@@ -84,6 +84,7 @@ fi
 # --init none: no systemd integration (not available during build)
 # --no-confirm: non-interactive
 # --extra-conf "sandbox = false": disable sandbox (can't set hostname in container builds)
+# --extra-conf "trusted-users": let wheel users' project flakes add substituters
 #
 # SELinux workaround (repairs local `just build-image` on Bazzite/Universal Blue):
 # the installer's detect_selinux() = (/sys/fs/selinux exists) && (sestatus on PATH),
@@ -98,7 +99,8 @@ RUN SES="$(command -v sestatus || true)"; [ -n "$SES" ] && mv "$SES" "$SES.off" 
     curl -L https://install.determinate.systems/nix | sh -s -- install linux \
     --no-confirm \
     --init none \
-    --extra-conf "sandbox = false"; \
+    --extra-conf "sandbox = false" \
+    --extra-conf "trusted-users = root @wheel"; \
     rc=$?; [ -n "$SES" ] && mv "$SES.off" "$SES" || true; \
     exit $rc
 

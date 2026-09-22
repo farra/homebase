@@ -454,8 +454,11 @@ box action profile="base" name="":
         if [[ -e /dev/nvidia0 ]]; then
             extra_flags+=" --nvidia"
         fi
+        # init-hooks run once per container start, before any login shell, so
+        # starting nix-daemon here avoids concurrent logins racing to start it
+        # (image uses --init none). dot_zprofile keeps a ping-guarded fallback.
         distrobox create --image "$image_ref" --name "$box_name" \
-            --init-hooks 'usermod -s /usr/bin/zsh "$(whoami)"' \
+            --init-hooks 'usermod -s /usr/bin/zsh "$(whoami)"; rm -f /nix/var/nix/daemon-socket/socket; setsid /nix/var/nix/profiles/default/bin/nix-daemon >/var/log/nix-daemon.log 2>&1 < /dev/null &' \
             $extra_flags
         # Run init to completion before first enter (works around distrobox
         # log-tailing race where enter hangs or the container exits with code 1)

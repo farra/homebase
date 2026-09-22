@@ -66,7 +66,7 @@ These should use =~= or =$HOME= expansion instead. They're guarded with =file-di
 
 fzf keybinding sourcing in =dot_zshrc.tmpl= checks Nix profile and =/usr/share/fzf/= but has no fallback for Homebrew's fzf path (e.g. =~/.linuxbrew/opt/fzf/shell/= or =/opt/homebrew/opt/fzf/shell/=). Matters for macOS native usage.
 
-*** TODO Add trusted-users to Nix config in Containerfile              :p1:infra:
+*** WIP Add trusted-users to Nix config in Containerfile              :p1:infra:
 :PROPERTIES:
 :EFFORT: 0:15
 :HANDOFF:
@@ -84,7 +84,9 @@ trusted-users = root @wheel
 User =jaaron= is in the =wheel= group. Without this, project-level flake
 substituter configs are ignored and some operations may be slower.
 
-*** TODO Start nix-daemon in distrobox init-hooks                      :p1:infra:
+*2026-09-22:* implemented; verify after the rebuild (=nix store info= shows =Trusted: 1=).
+
+*** WIP Start nix-daemon in distrobox init-hooks                      :p1:infra:
 :PROPERTIES:
 :EFFORT: 0:30
 :HANDOFF:
@@ -99,12 +101,16 @@ transient =SQLite database is busy= warnings.
 Start the daemon explicitly during distrobox creation via =--init-hooks= or
 early in the shell profile to avoid startup races and concurrent DB contention.
 
-*** TODO Rebuild BOTH boxes (home + gamedev) for atuin parity         :p1:infra:
+*2026-09-22:* implemented; verify after the rebuild (=ps= shows one root nix-daemon started at box start, no =sudo= parent).
+
+*** WIP Rebuild BOTH boxes (home + gamedev) for atuin parity         :p1:infra:
 :PROPERTIES:
 :EFFORT: 0:30
 :HANDOFF: Run from the HOST (distrobox is host-only): =homebase box rebuild= (home) AND =homebase box rebuild gamedev=. Do both — they share =~/.local/share/atuin=, so they must land on the same atuin version. After the gamedev rebuild, drop the per-box stopgap so the image binary is authoritative: =nix profile remove --regex atuin= (or the matching index). Verify in each box: =atuin --version= (expect 18.15.2) and =atuin status=. Gamedev also re-runs =homebase setup gamedev= (now includes p4-setup) + =homebase p4-login=. NOTE: gamedev rebuild should wait for the Perforce CI image (the HB-001 commit) so p4 is baked in the same pull.
 :WORKED_BY: claude-code, human
 :END:
+
+*2026-09-22:* flake.lock bumped (nixpkgs 2026-09-22) — images now carry atuin *18.21.0* and Emacs *31.1*. Same rule applies: the first box on 18.21 may migrate =history.db=, so rebuild both back to back. No atuin on the host.
 
 *Confirmed 2026-06-08:* both boxes are stale. The =home= box is on image
 =6b70d21f= (atuin *18.11.0*); the =gamedev= box is on =319fe3de= (also 18.11.0).
