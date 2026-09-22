@@ -182,6 +182,7 @@ task below for GTK4 migration.
 
 *** TODO Track Emacs PGTK2/GTK4 for display reconnection support      :p2:infra:
 :PROPERTIES:
+:REVISIT: nixpkgs has a GTK4 Emacs — check: nix eval nixpkgs attr names matching emacs*-gtk4/pgtk2, or GTK4 in emacs-pgtk's system-configuration-features
 :EFFORT: 0:15
 :HANDOFF:
 :WORKED_BY:
@@ -195,6 +196,11 @@ Emacs 31 is expected to ship with GTK4/PGTK2 which handles display reconnection.
 Monitor nixpkgs for =emacs-pgtk2= or =emacs-gtk4= and switch when available.
 
 Until then, avoid relying on long-lived daemon sessions surviving display changes.
+
+*2026-09-22:* the premise didn't hold. Emacs *31.1* shipped, and it is still PGTK on
+*GTK3* (=system-configuration-features=: =GTK3 PGTK=). nixpkgs-unstable has only
+=emacs31-gtk3= / =emacs31-pgtk=, with no GTK4 variant. Now tracked by =:REVISIT:=
+in the monthly forge =/devenv-review=.
 
 ** Up Next
 
