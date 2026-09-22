@@ -222,6 +222,17 @@ homebase agent update          # Update AI agents (claude, codex, antigravity, A
 homebase box rebuild           # Pull fresh image + recreate container (Linux only)
 ```
 
+To see what has drifted before updating anything:
+
+```bash
+homebase doctor                # repos, dotfiles, box images vs source, flake.lock age
+```
+
+`doctor` only reports; it changes nothing. Suppress a known, accepted warning
+until a date with a line in `~/.homebase/doctor-ack`
+(`<check-id> <YYYY-MM-DD> <reason>`). It is the instrument for the monthly
+devenv review, which is run from forge (`/devenv-review`).
+
 On macOS, the flow is: `chezmoi update` pulls the latest flake.nix + homebase.toml
 from git, then `update-nix-tools` rebuilds the nix profile from the updated flake.
 This is how changes made on your Bazzite workstation propagate to the Mac.

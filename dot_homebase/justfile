@@ -262,6 +262,17 @@ update: update-dotfiles update-host update-nix-tools update-flatpaks (agent "upd
     @echo ""
     @echo "All updates complete."
 
+# Usage:
+#   homebase doctor              # human-readable report
+#   homebase doctor --json       # for agents (forge /devenv-review) and Emacs
+#   homebase doctor --offline    # skip git fetch
+#
+# [any] Report drift: repos, dotfiles, box images, flake.lock age (facts only)
+doctor *args:
+    #!/usr/bin/env bash
+    CHEZMOI_SOURCE="$(chezmoi source-path 2>/dev/null || echo "$HOME/.local/share/chezmoi")"
+    exec "${CHEZMOI_SOURCE}/scripts/doctor.sh" {{args}}
+
 # [any] Pull and apply latest dotfiles
 update-dotfiles:
     #!/usr/bin/env bash
