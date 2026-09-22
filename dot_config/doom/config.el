@@ -53,7 +53,11 @@
 (after! vterm
   (setq vterm-shell (or (getenv "SHELL") "/usr/bin/zsh")))
 
-;; ghostel: terminal emulator on libghostty-vt (vterm alternative; trialing).
+;; ghostel: terminal emulator on libghostty-vt — the daily driver as of
+;; 2026-09. vterm (:term vterm) stays enabled as a fallback for now.
+;; Ghostel tunes its own buffers (undo, font-lock, process read buffering,
+;; hl-line); leave ghostel-timer-delay at its default — lowering it slows
+;; bulk output. Check `describe-mode' in a ghostel buffer before tuning.
 ;; Native module is a prebuilt .so that auto-downloads on first `M-x ghostel'
 ;; (ghostel-module-auto-install defaults to `ask'). No build toolchain needed;
 ;; if the prebuilt won't load in the distrobox, `M-x ghostel-module-compile'
