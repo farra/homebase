@@ -1,5 +1,7 @@
 personality = "pragmatic"
-model = "gpt-5.4"
+model = "gpt-5.5"
+model_reasoning_effort = "xhigh"
+approvals_reviewer = "auto_review"
 
 [notice]
 hide_full_access_warning = true
@@ -7,6 +9,7 @@ hide_full_access_warning = true
 [notice.model_migrations]
 "gpt-5.2-codex" = "gpt-5.3-codex"
 "gpt-5.3-codex" = "gpt-5.4"
+"gpt-5.4" = "gpt-5.5"
 
 [plugins."github@openai-curated"]
 enabled = true

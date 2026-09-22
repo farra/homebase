@@ -13,3 +13,12 @@
 	colorMoved = default
 [merge]
 	conflictstyle = diff3
+# gh as the GitHub credential helper (what `gh auth setup-git` writes, but by
+# name rather than the absolute nix-profile path, so it resolves on any layer
+# that has gh on PATH). The empty helper line clears inherited helpers.
+[credential "https://github.com"]
+	helper =
+	helper = !gh auth git-credential
+[credential "https://gist.github.com"]
+	helper =
+	helper = !gh auth git-credential

@@ -7,7 +7,7 @@ Active tasks checked out from design docs.
 
 ** Active
 
-*** TODO chezmoi files out of sync                                    :p2:hygiene:
+*** DONE chezmoi files out of sync                                    :p2:hygiene:
 :PROPERTIES:
 :EFFORT: 0:15
 :HANDOFF:
@@ -19,6 +19,8 @@ chezmoi reports two files modified but not synced:
 - =.config/git/ignore=
 
 Decide whether to =chezmoi apply= to overwrite local, =chezmoi add= to capture local changes, or add to =.chezmoiignore=.
+
+*Done 2026-09-22.* Those two had already resolved. The audit found four others (=.claude/settings.json=, =.codex/config.toml=, input-remapper, =.gitconfig=); live state was captured into source.
 
 *** DONE Fix Doom init.el typo: +onssave -> +onsave                   :p1:hygiene:
 :PROPERTIES:
