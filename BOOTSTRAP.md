@@ -218,7 +218,7 @@ homebase update-dotfiles       # Pull + apply latest dotfiles (chezmoi update)
 homebase update-host           # Homebrew bundle (host tools + casks)
 homebase update-nix-tools      # Rebuild nix profile from latest flake (macOS only)
 homebase update-flatpaks       # Update Flatpak apps (Linux only)
-homebase agent update          # Update AI agents (claude, codex, gemini, ACP)
+homebase agent update          # Update AI agents (claude, codex, antigravity, ACP)
 homebase box rebuild           # Pull fresh image + recreate container (Linux only)
 ```
 

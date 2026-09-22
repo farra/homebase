@@ -305,7 +305,7 @@
 ;; Provider-specific:
 ;;   C-c / c   - Start Claude specifically
 ;;   C-c / x   - Start Codex specifically
-;;   C-c / g   - Start Gemini specifically
+;;   C-c / g   - (disabled) Google — see the Antigravity note below
 ;;
 ;; Note: C-c / conflicts with org-sparse-tree in org-mode.
 ;; Use M-x org-sparse-tree if needed.
@@ -349,9 +349,13 @@
             (expand-file-name filename dir))))
 
   ;; Provider-specific bindings (after agent-shell loads)
+  ;; C-c / g (Google) is disabled — agent-shell drives Gemini over ACP via
+  ;; `gemini --experimental-acp', but Google retired the Gemini CLI on
+  ;; 2026-06-18 and its replacement (`agy') has no ACP mode yet.
+  ;; See github.com/google-antigravity/antigravity-cli issue #31.
+  ;; Re-enable this line once upstream ships an --acp flag.
   (map! "C-c / c" #'agent-shell-anthropic-start-claude-code
-        "C-c / x" #'agent-shell-openai-start-codex
-        "C-c / g" #'agent-shell-google-start-gemini))
+        "C-c / x" #'agent-shell-openai-start-codex))
 
 ;; Dev environment integration for agent-shell
 ;; Automatically use nix/devbox environment if project has flake.nix or devbox.json
@@ -430,12 +434,17 @@ Skips wrapping if already inside a nix shell (e.g., via direnv)."
          'agent-shell-openai-codex-acp-command orig-fn args))
 (advice-add 'agent-shell-openai-make-codex-client :around #'+agent-shell--codex-client-with-devenv)
 
-;; Gemini (Google)
-(defun +agent-shell--gemini-client-with-devenv (orig-fn &rest args)
-  "Wrap Gemini client creation for nix/devbox."
-  (apply #'+agent-shell--with-devenv
-         'agent-shell-google-gemini-acp-command orig-fn args))
-(advice-add 'agent-shell-google-make-gemini-client :around #'+agent-shell--gemini-client-with-devenv)
+;; Gemini (Google) — DISABLED
+;; Google retired the Gemini CLI on 2026-06-18; its replacement (`agy',
+;; Antigravity CLI) has no ACP mode, so agent-shell cannot drive it.
+;; Restore this block when upstream ships an --acp flag, renaming to the
+;; antigravity equivalents if agent-shell adds a Google provider for it.
+;;
+;; (defun +agent-shell--gemini-client-with-devenv (orig-fn &rest args)
+;;   "Wrap Gemini client creation for nix/devbox."
+;;   (apply #'+agent-shell--with-devenv
+;;          'agent-shell-google-gemini-acp-command orig-fn args))
+;; (advice-add 'agent-shell-google-make-gemini-client :around #'+agent-shell--gemini-client-with-devenv)
 
 ;; Agent Shell Sidebar - treemacs-style persistent side panel
 ;; Survives C-x 1 (delete-other-windows) like treemacs does

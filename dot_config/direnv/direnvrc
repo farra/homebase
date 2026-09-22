@@ -1,0 +1,52 @@
+# direnvrc — shared functions available to every .envrc on this machine.
+#
+# direnv sources this file before evaluating any .envrc, so anything defined
+# here can be called from a project's .envrc without duplicating it.
+
+# use_agy_gcp <project-id>
+#
+# Point `agy` (Antigravity CLI) at a Google Cloud account instead of the
+# consumer OAuth session in the OS keyring.
+#
+# Why this exists: agy has no account switcher. The keyring holds exactly one
+# consumer session, and switching it means `/logout` + re-login every time.
+# AGY_ADC_AUTH=1 is the only per-process override — it makes agy ignore the
+# keyring entirely and use Google Cloud Application Default Credentials, so a
+# work account and a personal account can be live in two terminals at once.
+#
+# Usage — in a project's .envrc, alongside `use flake`:
+#
+#     use flake
+#     use_agy_gcp my-gcp-project-id
+#
+# One-time setup on each machine:
+#
+#     gcloud auth application-default login
+#
+# NOTE: a parent .envrc does NOT apply to a project that has its own .envrc —
+# direnv loads only the nearest one unless the child calls `source_up`. That is
+# why this is a function rather than an .envrc at ~/dev/jmt/: every project
+# there already has an .envrc that would shadow it.
+#
+# Verified: AGY_ADC_AUTH=1 makes agy bypass the keyring session and require ADC.
+# Inferred from the agy binary, not yet exercised against a live GCP account:
+# ANTIGRAVITY_PROJECT_ID, GOOGLE_GENAI_USE_VERTEXAI, GOOGLE_GENAI_USE_ENTERPRISE.
+use_agy_gcp() {
+    local project="${1:-}"
+
+    if [[ -z "$project" ]]; then
+        log_error "use_agy_gcp: missing project id (usage: use_agy_gcp <project-id>)"
+        return 1
+    fi
+
+    export AGY_ADC_AUTH=1
+    export ANTIGRAVITY_PROJECT_ID="$project"
+
+    local adc="${GOOGLE_APPLICATION_CREDENTIALS:-$HOME/.config/gcloud/application_default_credentials.json}"
+    if [[ ! -f "$adc" ]]; then
+        log_status "use_agy_gcp: no ADC found — run: gcloud auth application-default login"
+    fi
+
+    # Re-evaluate when credentials are refreshed or revoked.
+    watch_file "$adc"
+}

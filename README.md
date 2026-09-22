@@ -224,7 +224,7 @@ Recommended pattern for multi-machine portability:
 ├── private_dot_ssh/              # SSH keys + config (from 1Password)
 ├── dot_claude/                   # Claude Code settings
 ├── dot_codex/                    # Codex CLI settings
-├── dot_gemini/                   # Gemini CLI settings
+├── dot_gemini/                   # Antigravity CLI (agy) settings
 └── .github/workflows/            # CI: build + push image to GHCR
 ```
 

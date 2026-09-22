@@ -274,7 +274,7 @@ Homebrew at `/home/linuxbrew/.linuxbrew` is visible from inside all containers v
 
 - `claude-code`: curl installer → `~/.local/bin` (self-updates)
 - `codex`: `brew install codex` (cask)
-- `gemini-cli`: `brew install gemini-cli` (formula)
+- `antigravity-cli`: `brew install --cask antigravity-cli` (cask, provides `agy`)
 - ACP adapters: `npm install -g` (uses host node/npm)
 - `node`: in `[host].tools` to provide npm for ACP adapter installs
 
@@ -283,6 +283,66 @@ Managed via `homebase install-agents` / `homebase update-agents`. No container g
 **Exception:** Claude Desktop is installed via DNF inside the distrobox (it's a Linux desktop
 app that needs `distrobox-export` to appear in the host's app launcher). It keeps its
 container guard.
+
+**Amendment (2026-08-03): Gemini CLI → Antigravity CLI.** Google retired Gemini CLI on
+2026-06-18 (it stopped serving requests for AI Pro/Ultra/free tiers; enterprise Code Assist
+licenses keep access). Homebrew deprecated the `gemini-cli` formula with an explicit
+replacement — `brew install --cask antigravity-cli` — and disables it on 2026-12-18.
+
+The cask was chosen over Google's `curl | bash` installer because it works identically on
+Linux and macOS (the cask ships `linux-x64/cli_linux_x64.tar.gz` and links to
+`$(brew --prefix)/bin/agy`), so the host layer keeps one install mechanism per platform. The
+cask is flagged `auto_updates`, so `brew upgrade` deliberately skips it and `agy update`
+handles updates — which is the same self-update rationale used for `claude-code` above.
+
+Do **not** run `agy install`: it appends PATH to the shell profile and purges aliases, and
+`dot_zshrc.tmpl` owns both. The brew symlink already puts `agy` on PATH.
+
+Config keeps living under `~/.gemini/` — `agy` reads `~/.gemini/antigravity-cli/settings.json`
+and still honors `~/.gemini/GEMINI.md`, so `dot_gemini/` stays the chezmoi source directory.
+Global MCP servers move out of `settings.json` into a standalone
+`~/.gemini/antigravity-cli/mcp_config.json` (per-workspace: `.agents/mcp_config.json`), with
+`url`/`httpUrl` keys renamed to `serverUrl`. Skills move from `~/.gemini/skills/` to
+`~/.gemini/antigravity-cli/skills/` (workspace: `.gemini/skills/` → `.agents/skills/`).
+
+Known gap: `agy` has no ACP mode, so agent-shell's Google provider (`C-c / g`) is disabled in
+`dot_config/doom/config.el` until upstream ships one. Claude and Codex bindings are unaffected.
+
+#### agy account switching
+
+`agy` has no account switcher. The OS keyring holds exactly one item (service `gemini`, with
+`"auth_method":"consumer"` in the payload), so switching Google identities natively means
+`/logout` inside the CLI followed by a fresh browser sign-in.
+
+Two workarounds were evaluated:
+
+**Separate `$HOME` per account — rejected.** It looks like isolation and isn't. A run under a
+different `$HOME` does get its own `~/.gemini/` (settings, history, conversations), but it
+still authenticates as the same user, because credentials come from the D-Bus session keyring
+rather than from `$HOME`. Split config plus a shared identity is the worst of both.
+
+**`AGY_ADC_AUTH=1` — adopted.** This is the one per-process auth override in the binary. With
+it set, `agy` ignores the keyring session entirely and uses Google Cloud Application Default
+Credentials instead (verified: `agy models` succeeds normally and fails with "Please sign in"
+under `AGY_ADC_AUTH=1` with no ADC configured). Because it is env-var driven, direnv can scope
+it per directory, and a personal account and a GCP account can be live in two terminals at
+once with no logout dance.
+
+This adds `gcloud-cli` to `[host]` `casks` (for `gcloud auth application-default login`) and a
+`use_agy_gcp <project-id>` function in `dot_config/direnv/direnvrc`.
+
+The function lives in `direnvrc` rather than in an `.envrc` at `~/dev/jmt/` because **direnv
+loads only the nearest `.envrc`** — every project under `~/dev/jmt/` already has its own (all
+`use flake` + Pulumi ESC, none calling `source_up`), so a parent `.envrc` would be silently
+shadowed by all of them. A function defined in `direnvrc` is visible to every `.envrc` on the
+machine and is opted into with one line.
+
+`homebase agy-auth` reports which identity the current directory resolves to, whether ADC is
+present, and whether the credentials actually work.
+
+Only `AGY_ADC_AUTH` is verified end-to-end. `ANTIGRAVITY_PROJECT_ID`, `GOOGLE_GENAI_USE_VERTEXAI`,
+`GOOGLE_GENAI_USE_ENTERPRISE`, `GOOGLE_APPLICATION_CREDENTIALS`, and `GEMINI_API_KEY` were read
+out of the stripped binary and are documented but untested — no GCP account was available.
 
 ### Rationale
 

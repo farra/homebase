@@ -37,7 +37,7 @@ setup-core: setup-workspace setup-flatpaks doom-install (agent "install")
     @echo "Core setup complete!"
     @echo "  - Workspace directories created"
     @echo "  - Doom Emacs installed (run 'just doom-sync' after config changes)"
-    @echo "  - AI agents installed (claude, claude-desktop, codex, gemini, acp)"
+    @echo "  - AI agents installed (claude, claude-desktop, codex, antigravity, acp)"
 
 # Usage:
 #   homebase setup            # base profile
@@ -702,7 +702,7 @@ p4-login:
 #   homebase agent install claude    # install only claude
 #   homebase agent update codex     # update only codex
 #
-# Agents: claude | claude-desktop | codex | gemini | acp
+# Agents: claude | claude-desktop | codex | antigravity | acp
 
 # [any] Install or update AI agent CLIs, desktop app, and ACP adapters
 agent action name="all":
@@ -770,19 +770,26 @@ agent action name="all":
         brew upgrade codex || brew install codex
     }
 
-    _install_gemini() {
-        if command -v gemini &>/dev/null; then
-            echo "Gemini CLI already installed: $(gemini --version 2>/dev/null || echo 'unknown version')"
-            echo "Run 'homebase agent update gemini' to update"
+    # Antigravity CLI (agy) replaces the Gemini CLI, which Google retired on
+    # 2026-06-18. The cask ships a native Go binary (linux-x64 / darwin) and is
+    # flagged auto_updates, so `brew upgrade` skips it — `agy update` self-updates.
+    # Config stays under ~/.gemini/ (agy reads ~/.gemini/antigravity-cli/).
+    _install_antigravity() {
+        if command -v agy &>/dev/null; then
+            echo "Antigravity CLI already installed: $(agy --version 2>/dev/null || echo 'unknown version')"
+            echo "Run 'homebase agent update antigravity' to update"
             return 0
         fi
-        echo "Installing Gemini CLI..."
-        brew install gemini-cli
-        echo "Gemini CLI installed"
+        echo "Installing Antigravity CLI..."
+        brew install --cask antigravity-cli
+        echo "Antigravity CLI installed"
+        echo "Run 'agy' to finish first-time setup (theme, auth, Gemini CLI import)."
     }
 
-    _update_gemini() {
-        brew upgrade gemini-cli || brew install gemini-cli
+    _update_antigravity() {
+        # Do not use `agy install` — it rewrites shell profile PATH and purges
+        # aliases, which chezmoi owns via dot_zshrc.tmpl.
+        agy update
     }
 
     _install_acp() {
@@ -790,7 +797,7 @@ agent action name="all":
         npm install -g @zed-industries/claude-agent-acp
         npm install -g @zed-industries/codex-acp
         echo "ACP adapters installed (claude-agent-acp, codex-acp)"
-        echo "Note: Gemini has native ACP support via --experimental-acp (no adapter needed)"
+        echo "Note: agy has no ACP mode yet — the agent-shell Google binding is disabled."
     }
 
     _update_acp() {
@@ -798,7 +805,7 @@ agent action name="all":
         npm install -g @zed-industries/codex-acp
     }
 
-    all_agents=(claude claude-desktop codex gemini acp)
+    all_agents=(claude claude-desktop codex antigravity acp)
 
     _dispatch_one() {
         local act="$1" agent="$2"
@@ -806,7 +813,7 @@ agent action name="all":
             claude)         "_${act}_claude" ;;
             claude-desktop) "_${act}_claude_desktop" ;;
             codex)          "_${act}_codex" ;;
-            gemini)         "_${act}_gemini" ;;
+            antigravity|agy) "_${act}_antigravity" ;;
             acp)            "_${act}_acp" ;;
             *)
                 echo "ERROR: Unknown agent '$agent'"
@@ -838,3 +845,49 @@ agent action name="all":
             exit 1
             ;;
     esac
+
+# [any] Show which Google identity `agy` will use in the current directory
+agy-auth:
+    #!/usr/bin/env bash
+    set -uo pipefail
+
+    # agy has no account switcher: the OS keyring holds exactly one consumer
+    # session. The only per-process override is AGY_ADC_AUTH=1, which makes agy
+    # ignore that session and use Google Cloud Application Default Credentials
+    # instead. direnv therefore decides the identity per directory.
+
+    echo "── agy auth ──"
+    if ! command -v agy &>/dev/null; then
+        echo "agy:        not installed (homebase agent install antigravity)"
+        exit 0
+    fi
+    echo "agy:        $(agy --version 2>/dev/null || echo unknown)"
+    echo "cwd:        $PWD"
+    echo ""
+
+    if [[ "${AGY_ADC_AUTH:-}" == "1" ]]; then
+        echo "mode:       ADC (AGY_ADC_AUTH=1 — keyring session ignored)"
+        echo "project:    ${ANTIGRAVITY_PROJECT_ID:-<unset — set ANTIGRAVITY_PROJECT_ID>}"
+        adc_file="${GOOGLE_APPLICATION_CREDENTIALS:-$HOME/.config/gcloud/application_default_credentials.json}"
+        if [[ -f "$adc_file" ]]; then
+            echo "adc:        $adc_file"
+        else
+            echo "adc:        MISSING — run: gcloud auth application-default login"
+        fi
+    else
+        echo "mode:       consumer OAuth (keyring)"
+        active=$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["active"])' \
+                 "$HOME/.gemini/google_accounts.json" 2>/dev/null)
+        echo "account:    ${active:-<unknown — run agy to sign in>}"
+        echo "switch:     /logout inside agy, then sign in again"
+    fi
+
+    echo ""
+    echo "── reachability ──"
+    # Cheapest authenticated call: lists models, no model invocation.
+    if out=$(timeout 45 agy models </dev/null 2>&1); then
+        echo "models:     OK ($(echo "$out" | wc -l) available)"
+    else
+        echo "models:     FAILED"
+        echo "$out" | head -3 | sed 's/^/            /'
+    fi

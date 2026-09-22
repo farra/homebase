@@ -35,6 +35,18 @@ while IFS= read -r formula; do
     printf 'brew "%s"\n' "$formula"
 done < <("$PARSER" host tools "$TOML_PATH")
 
+# Cross-platform casks (from [host] casks, if present). Unlike [macos] casks
+# these carry no OS guard — they ship native artifacts for Linux and macOS.
+if "$PARSER" host casks "$TOML_PATH" &>/dev/null; then
+    cat <<'EOF'
+
+# All platforms - casks with native Linux + macOS artifacts
+EOF
+    while IFS= read -r cask; do
+        printf 'cask "%s"\n' "$cask"
+    done < <("$PARSER" host casks "$TOML_PATH")
+fi
+
 cat <<'EOF'
 
 # macOS only - GUI apps
