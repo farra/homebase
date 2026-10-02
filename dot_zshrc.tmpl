@@ -138,9 +138,11 @@ load-secrets() {
         echo "op CLI not found."
         return 1
     fi
-    if ! op whoami &>/dev/null 2>&1; then
+    if ! op whoami &>/dev/null; then
         echo "Signing in to 1Password..."
-        eval "$(op signin)" || { echo "Skipping secrets (auth failed)."; return 1; }
+        local signin_out
+        signin_out="$(op signin)" || { echo "Skipping secrets (auth failed)."; return 1; }
+        eval "$signin_out"
     fi
     while IFS='=' read -r name ref; do
         [[ "$name" =~ ^[#[:space:]] || -z "$name" ]] && continue
