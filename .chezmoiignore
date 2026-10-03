@@ -33,3 +33,10 @@ docs
 # dot_claude/settings.json is the real declaration, so these never need syncing.
 .claude/plugins/installed_plugins.json
 .claude/plugins/known_marketplaces.json
+
+# input-remapper is Linux-only. The autostart override replaces Bazzite's
+# Hidden=true system entry (bazzite#5811) and no-ops where the service is off.
+{{ if ne .chezmoi.os "linux" }}
+.config/autostart/input-remapper-autoload.desktop
+.config/input-remapper-2
+{{ end }}

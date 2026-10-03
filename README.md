@@ -179,17 +179,20 @@ for the full design.
 Homebase tracks `input-remapper` configuration via chezmoi for reproducible mouse/controller mappings on Linux hosts.
 
 - Presets are source-controlled under `dot_config/input-remapper-2/presets/...`
-- Autoload is rendered from `dot_config/input-remapper-2/config.json.tmpl`
-- Autoload should remain host-aware (template conditions by hostname/device availability)
+- Autoload is `dot_config/input-remapper-2/config.json` (plain file, same on every Linux host)
+- Login autoload comes from `dot_config/autostart/input-remapper-autoload.desktop`. Bazzite ships the
+  system entry with `Hidden=true` since 44.20260929 (bazzite#5811); this user entry overrides it and
+  exits cleanly where `input-remapper.service` is not active (e.g. the laptop)
 
 Current test-case mapping:
 - Device: `Razer Razer DeathAdder Elite`
 - Preset: `desktop-nav`
 - Mapping: extra mouse button (`BTN_SIDE` code `275`) -> `SUPER_L+W` (KDE Overview)
 
-Recommended pattern for multi-machine portability:
+Multi-machine notes:
 - Keep presets backed up in git even if some devices are absent on other hosts.
-- Gate autoload entries in `config.json.tmpl` so only matching hosts enable specific devices.
+- No host gating: autoload only touches devices that are plugged in, so absent devices are skipped.
+  (The old hostname gate never worked; both Bazzite boxes report `bazzite`.)
 
 ## Repository Structure
 
@@ -212,12 +215,13 @@ Recommended pattern for multi-machine portability:
 │   ├── starship.toml             # Starship prompt (Nerd Font Symbols + nix detect)
 │   ├── git/ignore                # Global gitignore
 │   ├── gh/config.yml             # GitHub CLI config
-│   ├── input-remapper-2/         # input-remapper presets + host-aware autoload template
+│   ├── input-remapper-2/         # input-remapper presets + autoload config
 │   ├── zed/settings.json         # Zed editor config
 │   └── glow/glow.yml             # Markdown viewer config
 ├── dot_zshrc.tmpl                # Shell config (zsh + plugins + aliases)
 ├── dot_gitconfig.tmpl            # Git config (templated)
-├── dot_config/input-remapper-2/config.json.tmpl   # input-remapper autoload (host-aware)
+├── dot_config/input-remapper-2/config.json       # input-remapper autoload
+├── dot_config/autostart/input-remapper-autoload.desktop  # login autoload (overrides Bazzite's hidden entry)
 ├── dot_config/input-remapper-2/presets/...        # device-specific mapping presets
 ├── run_once_before_import-gpg-keys.sh.tmpl  # Import GPG keys from 1Password
 ├── run_onchange_create-authinfo-gpg.sh.tmpl # Encrypted ~/.authinfo.gpg from PAT

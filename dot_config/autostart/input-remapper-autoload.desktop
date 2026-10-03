@@ -1,0 +1,6 @@
+[Desktop Entry]
+Type=Application
+Exec=bash -c "systemctl is-active -q input-remapper || exit 0; input-remapper-control --command stop-all && input-remapper-control --command autoload"
+Name=input-remapper-autoload
+Icon=input-remapper
+Comment=Starts injecting all presets that are set to automatically load for the user
