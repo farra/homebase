@@ -87,16 +87,33 @@ Mirrors `+vterm/toggle'.  With prefix ARG, recreate the terminal."
             (ghostel-buffer-name name))
         (ghostel)))))
 
+(defun +ghostel/here (arg)
+  "Open this workspace's ghostel terminal in the current window.
+Plain `ghostel' keys its buffer slot on `ghostel-buffer-name', so a single
+*ghostel* is shared by every workspace; binding the name per workspace
+gives each one its own.  ARG is passed through to `ghostel'."
+  (interactive "P")
+  (let ((ghostel-buffer-name
+         (format "*ghostel:%s*"
+                 (if (bound-and-true-p persp-mode)
+                     (safe-persp-name (get-current-persp))
+                   "main"))))
+    (ghostel arg)))
+
 (use-package! ghostel
   :commands (ghostel ghostel-project)
   :init
   (setq ghostel-module-auto-install 'download)
+  ;; Doom only attaches "real" buffers to the current workspace
+  ;; (`+workspaces-add-current-buffer-h'). :term vterm registers vterm-mode;
+  ;; ghostel has no Doom module, so its buffers belonged to no workspace.
+  (add-to-list 'doom-real-buffer-modes 'ghostel-mode)
   ;; ghostel takes Doom's terminal keys; vterm moves to o v / o V.
   ;; This runs after :config default, so it overrides the :term vterm bindings.
   (map! :leader
         :desc "Toggle ghostel popup"  "o t" #'+ghostel/toggle
         :desc "Open ghostel here"     "o T" #'ghostel-project
-        :desc "Ghostel"               "o g" #'ghostel
+        :desc "Ghostel"               "o g" #'+ghostel/here
         :desc "Toggle vterm popup"    "o v" #'+vterm/toggle
         :desc "Open vterm here"       "o V" #'+vterm/here)
   (set-popup-rule! "^\\*doom:ghostel-popup"
@@ -637,7 +654,7 @@ Advises `ask-user-about-supersession-threat'."
       (projectile-switch-project-by-name "~/forge/")))
 
   (defun +workspace/reset-layout ()
-    "Reset to canonical layout: treemacs | main | agent-shell, vterm at bottom."
+    "Reset to canonical layout: treemacs | main | agent-shell, terminal at bottom."
     (interactive)
     (let* ((ws-bufs (+workspace-buffer-list))
            (agent-buf (seq-find (lambda (b)
@@ -646,8 +663,8 @@ Advises `ask-user-about-supersession-threat'."
                                 ws-bufs))
            (term-buf (seq-find (lambda (b)
                                  (with-current-buffer b
-                                   (or (derived-mode-p 'vterm-mode)
-                                       (derived-mode-p 'eshell-mode))))
+                                   (derived-mode-p '(ghostel-mode vterm-mode
+                                                     eshell-mode))))
                                ws-bufs))
            ;; Prefer README/backlog as "home base", else first file buffer
            (home-buf (seq-find (lambda (b)
