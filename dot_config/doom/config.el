@@ -303,6 +303,31 @@ don't break indentation (tested: ~1 changed line per header vs 7-36)."
     (c-make-noise-macro-regexps)))
 (add-hook 'c++-mode-hook #'+unreal-cc-h)
 
+;; dape: attach gdb to the Unreal Editor. gdb runs inside the gamedev box, next
+;; to the editor, through kit's in-gamedev.sh: the home box can't read the
+;; editor's /proc entries, and its libraries resolve there. DAP passes through
+;; distrobox's stdio byte-for-byte, and the boxes share a PID namespace, so a
+;; PID found here is valid there (both checked 2026-10-06).
+(defun +unreal-editor-pid ()
+  "Return the PID of the running UnrealEditor, asking if there are several."
+  (let ((pids (process-lines-ignore-status "pgrep" "-x" "UnrealEditor")))
+    (string-to-number
+     (pcase pids
+       ('() (user-error "No UnrealEditor process is running"))
+       (`(,pid) pid)
+       (_ (completing-read "UnrealEditor PID: " pids nil t))))))
+
+(after! dape
+  (let ((in-gamedev (expand-file-name "~/dev/jmt/retailmage/kit/scripts/in-gamedev.sh")))
+    (when (file-executable-p in-gamedev)
+      (add-to-list 'dape-configs
+                   `(gdb-unreal-attach
+                     modes (c-mode c++-mode)
+                     command ,in-gamedev
+                     command-args ("gdb" "--interpreter=dap")
+                     :request "attach"
+                     :pid +unreal-editor-pid)))))
+
 (after! ox-latex
   (when (file-exists-p "~/forge/src/templates/latex/install.el")
     (load! "~/forge/src/templates/latex/install.el")))
