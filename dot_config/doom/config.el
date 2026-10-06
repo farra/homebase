@@ -250,6 +250,59 @@ gives each one its own.  ARG is passed through to `ghostel'."
   :load-path "~/dev/jmt/gongfu/tools/emacs/"
   :mode "\\.gf\\'")
 
+;; C/C++ — mostly Unreal Engine (Retail Mage). Plan and rationale:
+;; forge vault/devenv/emacs/14-emacs-explorations-2026-10.org (#unreal-cpp).
+
+;; Never format C/C++ on save. With no .clang-format, apheleia — or clangd's
+;; LSP formatting, which embeds clang-format — would rewrite Epic's
+;; tab-indented style as LLVM style, in game trees that have no git.
+;; Format by hand with Engine/Extras/clang-format/experimental.clang-format.
+(add-to-list '+format-on-save-disabled-modes 'c-mode)
+(add-to-list '+format-on-save-disabled-modes 'c++-mode)
+
+;; UE headers are C++; don't let ambiguous .h files fall back to c-mode.
+(setq +cc-default-header-file-mode 'c++-mode)
+
+(after! lsp-clangd
+  ;; Replaces Doom's "-j=<cpus/2>" (12 here): UE indexing is memory-heavy.
+  (setq lsp-clients-clangd-args
+        (list "-j=6"
+              "--background-index"
+              "--pch-storage=disk"
+              "--header-insertion=never"
+              "--header-insertion-decorators=0"
+              "--completion-style=detailed"
+              ;; Let clangd ask Epic's bundled clang for its system includes.
+              (concat "--query-driver="
+                      (expand-file-name "~/dev/jmt/retailmage/toolchain/")
+                      "*/x86_64-unknown-linux-gnu/bin/clang++"))))
+
+(defun +unreal-cc-h ()
+  "Unreal Engine style for C++ buffers under Retail Mage.
+Matches Epic's .editorconfig (tabs, width 4, 150 columns) and declares UE
+reflection macros and module *_API export macros as cc-mode noise, so they
+don't break indentation (tested: ~1 changed line per header vs 7-36)."
+  (when (string-match-p "/dev/jmt/retailmage/" (or buffer-file-name ""))
+    (setq-local c-basic-offset 4
+                tab-width 4
+                indent-tabs-mode t
+                fill-column 150
+                ;; UE trees are far past lsp-mode's file-watch limit.
+                lsp-enable-file-watchers nil
+                c-noise-macro-with-parens-names
+                '("UCLASS" "USTRUCT" "UENUM" "UINTERFACE" "UPROPERTY"
+                  "UFUNCTION" "UMETA" "UPARAM" "UDELEGATE")
+                c-noise-macro-names
+                (save-excursion
+                  (goto-char (point-min))
+                  (let (macros)
+                    (while (re-search-forward "\\_<[A-Z0-9_]+_API\\_>" nil t)
+                      (cl-pushnew (match-string-no-properties 0) macros
+                                  :test #'equal))
+                    macros)))
+    (c-make-noise-macro-regexps)))
+(add-hook 'c++-mode-hook #'+unreal-cc-h)
+
 (after! ox-latex
   (when (file-exists-p "~/forge/src/templates/latex/install.el")
     (load! "~/forge/src/templates/latex/install.el")))

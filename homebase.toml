@@ -62,6 +62,9 @@ packages = [
   "file",
   "lsof",
   "bottom",
+  # C/C++ (Unreal via Emacs): clangd for lsp-mode, gdb for dape
+  "clang-tools",
+  "gdb",
 ]
 # Special package expressions defined in flake.nix.
 # Use these for custom builds that aren't plain nixpkgs attrs.
