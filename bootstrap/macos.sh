@@ -177,6 +177,7 @@ else
     gpg_key_fingerprint = "$GPG_KEY_FPR"
     op_anthropic_key = ""
     op_openai_key = ""
+    op_bluesky = ""
 TOML
         ok "Pre-seeded chezmoi config with 1Password item names"
     fi

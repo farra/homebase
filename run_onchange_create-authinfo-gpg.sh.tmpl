@@ -1,9 +1,14 @@
 #!/usr/bin/env bash
 # Create encrypted ~/.authinfo.gpg from 1Password secrets
-# Runs when PAT changes (chezmoi run_onchange_ hashes rendered content)
+# Runs when any source secret changes (chezmoi run_onchange_ hashes rendered content).
+# This script owns the whole file: entries added by hand are lost on the next run,
+# so add new auth-source entries here, backed by 1Password.
 #
-# Change-detection hash (do not edit):
+# Change-detection hashes (do not edit):
 # {{ onepasswordRead (printf "op://Private/%s/credential" .op_github_pat) | sha256sum }}
+{{- if and (hasKey . "op_bluesky") (ne .op_bluesky "") }}
+# {{ onepasswordRead (printf "op://Private/%s/password" .op_bluesky) | sha256sum }}
+{{- end }}
 
 set -euo pipefail
 
@@ -18,12 +23,24 @@ if ! gpg --list-keys "$GPG_KEY_FPR" &>/dev/null; then
     exit 1
 fi
 
-# Fetch PAT at runtime (not baked into script)
+# Fetch secrets at runtime (not baked into script)
 PAT="$(op read "op://Private/{{ .op_github_pat }}/credential")"
+{{- if and (hasKey . "op_bluesky") (ne .op_bluesky "") }}
+# Bluesky (Emacs `bluesky' package): a 1Password Login item, username = handle,
+# password = an app password (Bluesky Settings > Privacy and security > App passwords).
+BSKY_HANDLE="$(op read "op://Private/{{ .op_bluesky }}/username")"
+BSKY_APP_PW="$(op read "op://Private/{{ .op_bluesky }}/password")"
+{{- end }}
 
 # Encrypt directly to file — plaintext never touches disk
-printf 'machine api.github.com login %s^forge password %s\n' \
-    "{{ .github_user }}" "$PAT" | \
+{
+    printf 'machine api.github.com login %s^forge password %s\n' \
+        "{{ .github_user }}" "$PAT"
+{{- if and (hasKey . "op_bluesky") (ne .op_bluesky "") }}
+    printf 'machine bsky.social login %s password %s\n' \
+        "$BSKY_HANDLE" "$BSKY_APP_PW"
+{{- end }}
+} | \
     gpg --batch --yes --trust-model always \
         --encrypt --recipient "$GPG_KEY_FPR" \
         --output "$TARGET"

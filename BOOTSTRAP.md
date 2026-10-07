@@ -16,12 +16,16 @@ You need a **1Password account** with these items in your **Private** vault:
 | `github-pat`               | Login: `credential` field                | GitHub PAT (`repo` + `read:packages`)  |
 | `cautomaton-homebase-gpg`  | Secure Note: `public.asc`, `secret.asc`  | GPG key for `~/.authinfo.gpg`          |
 | `perforce-jt`              | Login: `password`, `ssl fingerprint`     | p4 login + depot trust (gamedev only)  |
+| (your choice)              | Login: `username` (handle), `password`   | Bluesky app password for Emacs (optional) |
 
 These item names are configured at the top of each bootstrap script (`OP_SSH_KEY`,
 `OP_GITHUB_PAT`, `OP_GPG_KEY`). Change them there if your items are named differently.
 The Perforce item is **optional** — only needed for the gamedev profile, and the
 `homebase p4-login` recipe falls back to interactive prompts when it's absent.
-Its chezmoi var (`op_perforce`) is prompted during `chezmoi init`.
+Its chezmoi var (`op_perforce`) is prompted during `chezmoi init`. The Bluesky item is
+**optional** too (`op_bluesky`, prompted the same way; empty skips it): its handle and
+app password become the `bsky.social` entry in `~/.authinfo.gpg` for the Emacs `bluesky`
+package.
 
 You also need **network access** to GitHub, Homebrew, 1Password, and (for Nix)
 the Determinate Systems installer.

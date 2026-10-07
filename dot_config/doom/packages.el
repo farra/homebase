@@ -83,6 +83,9 @@
 
 ;; ghostel - terminal emulator powered by libghostty-vt (vterm alternative)
 (package! ghostel)
+;; Bluesky client (ahyatt). Auth: app password via auth-source; the
+;; bsky.social entry in ~/.authinfo.gpg comes from 1Password (op_bluesky).
+(package! bluesky)
 
 ;; pdf-tools comes prebuilt from Nix (flake include `emacs-native'), so
 ;; epdfinfo is compiled against the image's poppler instead of needing

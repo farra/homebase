@@ -80,7 +80,7 @@ Layer 2: Per-project nix flakes (cautomaton-develops, out of scope)
 | `dot_config/doom/` | Doom Emacs configuration |
 | `dot_gitconfig.tmpl` | Git config (templated) |
 | `run_once_before_import-gpg-keys.sh.tmpl` | Import GPG keys from 1Password for authinfo encryption |
-| `run_onchange_create-authinfo-gpg.sh.tmpl` | Create encrypted `~/.authinfo.gpg` from 1Password PAT |
+| `run_onchange_create-authinfo-gpg.sh.tmpl` | Create encrypted `~/.authinfo.gpg` from 1Password (GitHub PAT; optional Bluesky app password). Owns the whole file: add entries here, not by hand |
 | `private_dot_ssh/` | SSH keys + config (from 1Password templates) |
 | `.chezmoi.toml.tmpl` | chezmoi config with user data |
 | `.chezmoiexternal.toml` | External repos (forge clone) |

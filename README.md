@@ -224,7 +224,7 @@ Multi-machine notes:
 ├── dot_config/autostart/input-remapper-autoload.desktop  # login autoload (overrides Bazzite's hidden entry)
 ├── dot_config/input-remapper-2/presets/...        # device-specific mapping presets
 ├── run_once_before_import-gpg-keys.sh.tmpl  # Import GPG keys from 1Password
-├── run_onchange_create-authinfo-gpg.sh.tmpl # Encrypted ~/.authinfo.gpg from PAT
+├── run_onchange_create-authinfo-gpg.sh.tmpl # Encrypted ~/.authinfo.gpg from 1Password (PAT, Bluesky)
 ├── private_dot_ssh/              # SSH keys + config (from 1Password)
 ├── dot_claude/                   # Claude Code settings
 ├── dot_codex/                    # Codex CLI settings
