@@ -759,6 +759,22 @@ focus to be seen."
   (advice-add fn :around #'+agent-skill-in-other-window))
 (advice-add 'agent-skill-select :around #'+agent-skill-select-in-other-window)
 
+;; Some apps (seen with Vibe Typer, 2026-10-16) hand Emacs their clipboard as
+;; X11 compound text, which arrives undecoded: "’" shows up as ESC - F plus a
+;; raw byte.  Raw bytes then break json-serialize, so a prompt pasted into
+;; agent-shell never reaches the agent and the shell spins forever.  Decode
+;; such pastes on yank.  Only strings that hold compound-text escapes and
+;; whose only non-ASCII characters are raw bytes are touched.
+(defun +yank-decode-compound-text (s)
+  "Return S decoded as X11 compound text, if that's what it is."
+  (if (and (string-match-p "\e[-$(),.]" s)
+           (seq-some (lambda (c) (> c 127)) s)
+           (seq-every-p (lambda (c) (or (< c 128) (eq (char-charset c) 'eight-bit))) s))
+      (decode-coding-string (encode-coding-string s 'raw-text) 'compound-text)
+    s))
+
+(add-hook 'yank-transform-functions #'+yank-decode-compound-text)
+
 ;;; === Workspace autosave ===
 
 ;; Doom saves the workspace session only on a clean exit, so a daemon crash
