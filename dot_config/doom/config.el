@@ -671,6 +671,35 @@ Skips wrapping if already inside a nix shell (e.g., via direnv)."
 ;; restore.  Trial it in a throwaway daemon first.
 
 
+;;; === Workspace autosave ===
+
+;; Doom saves the workspace session only on a clean exit, so a daemon crash
+;; loses every workspace made since the last restart (2026-10-16: an abort in
+;; redisplay left a session file from that morning).  Save every few minutes,
+;; but never when only placeholder workspaces exist: that would overwrite a
+;; good session with an empty one (persp-mode keeps 3 backups).
+(defun +workspace--worth-saving-p ()
+  "Non-nil if some workspace has a real name (not main, none or #N)."
+  (and (bound-and-true-p persp-mode)
+       (cl-some (lambda (name)
+                  (not (or (member name (list persp-nil-name +workspaces-main))
+                           (string-match-p "\\`#[0-9]+\\'" name))))
+                (persp-names-current-frame-fast-ordered))))
+
+(defun +workspace/autosave-session ()
+  "Save workspaces to Doom's quickload file, if any are worth saving."
+  (when (+workspace--worth-saving-p)
+    (let ((inhibit-message t))
+      (persp-save-state-to-file))))
+
+(defvar +workspace--autosave-timer nil)
+(after! persp-mode
+  (when (timerp +workspace--autosave-timer)
+    (cancel-timer +workspace--autosave-timer))
+  (setq +workspace--autosave-timer
+        (run-with-timer 300 300 #'+workspace/autosave-session)))
+
+
 ;;; === Agent Multitasking ===
 
 ;; Make agent-shell-manager visible across ALL workspaces
