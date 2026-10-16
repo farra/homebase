@@ -69,6 +69,7 @@
   "Toggle a ghostel popup at the project root, one per workspace.
 Mirrors `+vterm/toggle'.  With prefix ARG, recreate the terminal."
   (interactive "P")
+  (require 'ghostel)  ; so the let below binds the special var, not a local
   (let* ((name (format "*doom:ghostel-popup:%s*"
                        (if (bound-and-true-p persp-mode)
                            (safe-persp-name (get-current-persp))
@@ -91,8 +92,12 @@ Mirrors `+vterm/toggle'.  With prefix ARG, recreate the terminal."
   "Open this workspace's ghostel terminal in the current window.
 Plain `ghostel' keys its buffer slot on `ghostel-buffer-name', so a single
 *ghostel* is shared by every workspace; binding the name per workspace
-gives each one its own.  ARG is passed through to `ghostel'."
+gives each one its own.  ARG is passed through to `ghostel'.
+Requires ghostel first: config.el is lexical, and before ghostel loads
+`ghostel-buffer-name' isn't special yet, so the `let' would bind a local
+that `ghostel' never sees (and loading ghostel inside it then errors)."
   (interactive "P")
+  (require 'ghostel)
   (let ((ghostel-buffer-name
          (format "*ghostel:%s*"
                  (if (bound-and-true-p persp-mode)
