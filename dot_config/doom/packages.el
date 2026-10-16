@@ -50,6 +50,9 @@
 ;; (unpin! t)
 
 (package! p4)
+;; rg.el: the backend projectile-ripgrep needs (the rg binary alone isn't enough).
+;; Results land in an rg buffer: n/p to move, r to refine, e for wgrep edits.
+(package! rg)
 
 (package! websocket)
 

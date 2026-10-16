@@ -168,6 +168,9 @@ that `ghostel' never sees (and loading ghostel inside it then errors)."
 ;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
 ;; they are implemented.
 
+;; p4's default prefix is C-x p, which replaces project.el's whole C-x p map
+;; (C-x p g project-find-regexp, C-x p f, ...).  Move p4 to C-c 4.
+(setq p4-global-key-prefix (kbd "C-c 4"))
 (require 'p4)
 
 (map!
@@ -876,6 +879,14 @@ Advises `ask-user-about-supersession-threat'."
 
   (setq +workspaces-switch-project-function #'+workspace/open-readme-and-treemacs))
 
+
+;; C-c s v: ripgrep the whole forge vault from anywhere (Doom's C-c s map has
+;; buffer, project and directory search, but nothing project-independent).
+(defun +search/forge-vault ()
+  "Search ~/forge/vault with consult-ripgrep."
+  (interactive)
+  (consult-ripgrep (expand-file-name "~/forge/vault")))
+(map! "C-c s v" #'+search/forge-vault)
 
 ;; ============================================================
 ;; gptel - LLM Client for Programmatic Use
