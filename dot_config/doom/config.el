@@ -671,6 +671,91 @@ Skips wrapping if already inside a nix shell (e.g., via direnv)."
 ;; restore.  Trial it in a throwaway daemon first.
 
 
+;; xenodium/emacs-skills helpers (/open, /select, /highlight, /dired) open files
+;; with plain `find-file' in the selected window.  Called from an agent, that's
+;; the agent's own window (agent-shell, or Claude in ghostel), so the
+;; conversation gets replaced.  Run them in another window instead, and give
+;; /highlight a face that's readable with doom-one (the plugin hard-codes
+;; hi-yellow).  Advice, not edits: plugin updates overwrite its cache, and
+;; nadvice keeps the advice through each call's re-`load' of the helper.
+(defface +agent-skill-highlight
+  '((((background dark)) :background "#4d4529" :extend t)
+    (t :background "#fff1b8" :extend t))
+  "Face for regions marked by the emacs-skills /highlight command.")
+
+(defun +agent-skill-highlight-set-face (&rest _)
+  "Soften the highlight: the theme's yellow blended 25% into the background."
+  (when (and (fboundp 'doom-color) (doom-color 'yellow) (doom-color 'bg))
+    (set-face-attribute '+agent-skill-highlight nil
+                        :background (doom-blend 'yellow 'bg 0.25))))
+
+(add-hook 'doom-load-theme-hook #'+agent-skill-highlight-set-face)
+
+(defun +agent-skill--agent-window-p (w)
+  "Non-nil if W shows an agent conversation or a terminal."
+  (with-current-buffer (window-buffer w)
+    (derived-mode-p 'agent-shell-mode 'ghostel-mode 'vterm-mode)))
+
+(defun +agent-skill--home-window ()
+  "The selected window of the GUI frame the user is in.
+`emacsclient -e' may run with the daemon's terminal frame selected."
+  (let ((w (selected-window)))
+    (if (display-graphic-p (window-frame w))
+        w
+      (let* ((guis (seq-filter #'display-graphic-p (frame-list)))
+             (f (or (seq-find (lambda (f) (eq (frame-focus-state f) t)) guis)
+                    (car guis))))
+        (if f (frame-selected-window f) w)))))
+
+(defun +agent-skill--target-window ()
+  "Where emacs-skills files should appear: never an agent's window.
+Use the selected window unless it's an agent's; otherwise the widest
+window that isn't an agent's, Treemacs, a side window, a popup or
+dedicated; otherwise split one off to the right."
+  (let ((home (+agent-skill--home-window)))
+    (if (not (+agent-skill--agent-window-p home))
+        home
+      (or (car (sort (seq-remove
+                      (lambda (w)
+                        (or (+agent-skill--agent-window-p w)
+                            (window-dedicated-p w)
+                            (window-parameter w 'window-side)
+                            (and (fboundp '+popup-window-p) (+popup-window-p w))
+                            (with-current-buffer (window-buffer w)
+                              (derived-mode-p 'treemacs-mode))))
+                      (window-list (window-frame home) 'nomini))
+                     (lambda (a b) (> (window-total-width a) (window-total-width b)))))
+          (split-window home nil 'right)))))
+
+(defun +agent-skill--restyle-highlights ()
+  "Swap the plugin's hi-yellow for our face, and show the first region."
+  (dolist (buf (buffer-list))
+    (with-current-buffer buf
+      (when (bound-and-true-p agent-skill-highlight-mode)
+        (dolist (ov agent-skill-highlight--overlays)
+          (overlay-put ov 'face '+agent-skill-highlight)))))
+  (when (bound-and-true-p agent-skill-highlight--overlays)
+    (goto-char (apply #'min (mapcar #'overlay-start agent-skill-highlight--overlays)))
+    (recenter 2)))
+
+(defun +agent-skill-in-other-window (fn &rest args)
+  "Run emacs-skills helper FN with ARGS in a window that isn't an agent's.
+Several files all land in the same window; the last one stays visible."
+  (with-selected-window (+agent-skill--target-window)
+    (prog1 (apply fn args)
+      (+agent-skill--restyle-highlights))))
+
+(defun +agent-skill-select-in-other-window (fn &rest args)
+  "Like `+agent-skill-in-other-window', but leave the target window selected.
+Emacs doesn't draw the region in unselected windows, so /select must move
+focus to be seen."
+  (select-window (+agent-skill--target-window))
+  (apply fn args))
+
+(dolist (fn '(agent-skill-highlight agent-skill-open agent-skill-dired))
+  (advice-add fn :around #'+agent-skill-in-other-window))
+(advice-add 'agent-skill-select :around #'+agent-skill-select-in-other-window)
+
 ;;; === Workspace autosave ===
 
 ;; Doom saves the workspace session only on a clean exit, so a daemon crash
