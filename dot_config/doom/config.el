@@ -602,6 +602,72 @@ Skips wrapping if already inside a nix shell (e.g., via direnv)."
   ;; Display at bottom (default)
   (setq agent-shell-manager-side 'bottom))
 
+;; ============================================================
+;; agent-shell add-ons (trial 2026-10-16)
+;; ============================================================
+;; Notes: ~/forge/vault/devenv/emacs/17-agent-shell-addons-2026-10.org
+;; hq and attention are both on trial, to compare against each other and
+;; alongside the worktree dashboard (C-c . w).
+
+;; hq: session sidebar workspace with live preview, and a posframe peek.
+(use-package! agent-shell-hq
+  :commands (agent-shell-hq-toggle agent-shell-hq-peek agent-shell-hq-label)
+  :init
+  (map! "C-c / h" #'agent-shell-hq-toggle
+        "C-c / p" #'agent-shell-hq-peek))
+
+;; attention: mode-line count of sessions waiting on Aaron, jump to the
+;; oldest, a status-sorted dashboard, desktop notifications.
+(use-package! agent-shell-attention
+  :after agent-shell
+  :init
+  (map! "C-c / a" #'agent-shell-attention-jump
+        "C-c / A" #'agent-shell-attention-dashboard)
+  :config
+  (setq agent-shell-attention-render-function #'agent-shell-attention-render-active
+        agent-shell-attention-notify-function #'agent-shell-attention-notify-default)
+  (agent-shell-attention-mode 1))
+
+;; links: bookmarks and [[agent-shell:SESSION?agent=..&dir=..]] Org links
+;; that reuse a live session or resume it.  Worklogs can link to sessions.
+(use-package! agent-shell-links
+  :defer t
+  :init
+  (after! bookmark (agent-shell-links-bookmark-setup))
+  (after! ol
+    (org-link-set-parameters "agent-shell"
+                             :follow #'agent-shell-links-org-follow
+                             :store #'agent-shell-links-org-store)))
+
+;; recall: index, search and resume transcripts.  Ours live in
+;; ~/forge/vault/agent-shell/<project>/transcripts/, not the default
+;; <project>/.agent-shell/transcripts/.
+(use-package! agent-recall
+  :commands (agent-recall-search agent-recall-search-live agent-recall-browse
+             agent-recall-browse-project agent-recall-resume agent-recall-reindex)
+  :init
+  (map! "C-c / r" #'agent-recall-search-live
+        "C-c / R" #'agent-recall-browse)
+  :config
+  (setq agent-recall-search-paths '("~/forge/vault/agent-shell")
+        agent-recall-transcript-dir-name "transcripts"
+        agent-recall-max-depth 2
+        agent-recall-search-function 'consult-ripgrep))
+
+;; ob-agent-shell: #+begin_src agent-shell blocks run in the live session.
+;; Doom's babel lazy-loader finds ob-agent-shell on first execution, so the
+;; language needs no org-babel-do-load-languages entry.
+(use-package! ob-agent-shell
+  :defer t
+  :init
+  (after! org
+    (add-to-list 'org-src-lang-modes '("agent-shell" . text))))
+
+;; agent-shell-desktop is installed but NOT enabled: it restores sessions
+;; through desktop-save-mode, which competes with Doom's persp-mode session
+;; restore.  Trial it in a throwaway daemon first.
+
+
 ;;; === Agent Multitasking ===
 
 ;; Make agent-shell-manager visible across ALL workspaces

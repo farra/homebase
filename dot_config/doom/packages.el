@@ -70,6 +70,22 @@
   :recipe (:host github :repo "cmacrae/agent-shell-sidebar"))
 (package! agent-shell-manager
   :recipe (:host github :repo "jethrokuan/agent-shell-manager"))
+;; Trial 2026-10-16: session overview, attention, links, recall, babel.
+;; Notes: ~/forge/vault/devenv/emacs/17-agent-shell-addons-2026-10.org
+(package! agent-shell-hq
+  :recipe (:host github :repo "SreenivasVRao/agent-shell-hq" :files ("*.el")))
+(package! agent-shell-attention
+  :recipe (:host github :repo "ultronozm/agent-shell-attention.el"))
+(package! agent-shell-links
+  :recipe (:host github :repo "ultronozm/agent-shell-links.el"))
+(package! agent-recall
+  :recipe (:host github :repo "mrx-xo/agent-recall"))
+(package! ob-agent-shell
+  :recipe (:host github :repo "eddof13/ob-agent-shell"))
+;; Installed but not enabled: it needs desktop-save-mode, which competes
+;; with Doom's persp-mode sessions. See the notes before turning it on.
+(package! agent-shell-desktop
+  :recipe (:host github :repo "timfel/agent-shell-desktop.el"))
 
 ;; Justfile support
 (package! just-mode)
