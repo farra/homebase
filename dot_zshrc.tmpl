@@ -61,6 +61,13 @@ if [[ -f /run/.containerenv ]]; then
     export PATH="$HOME/.local/lib/distrobox-host-wrappers:$PATH"
 fi
 
+# The box has no system D-Bus of its own; the host's is mounted under /run/host.
+# Pointing at it lets logind clients work, e.g. Emacs 31's system-sleep, which
+# agent-shell uses to keep the machine awake during agent turns.
+if [[ -f /run/.containerenv && -z "$DBUS_SYSTEM_BUS_ADDRESS" && -S /run/host/run/dbus/system_bus_socket ]]; then
+    export DBUS_SYSTEM_BUS_ADDRESS="unix:path=/run/host/run/dbus/system_bus_socket"
+fi
+
 # =============================================================================
 # Zsh options
 # =============================================================================
