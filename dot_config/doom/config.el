@@ -823,3 +823,108 @@ Advises `ask-user-about-supersession-threat'."
 
   ;; Don't stream by default for programmatic use
   (setq gptel-stream nil))
+
+
+;; ============================================================
+;; markdown-mode: cache inline-code spans
+;; ============================================================
+;; `markdown-inline-code-at-pos' rescans its whole text block from the start
+;; for every bold/italic/link candidate, so dense blocks cost quadratic time:
+;; a 36KB block in the gongfu keyword worksheet took 12s per keystroke
+;; (2.6M `markdown-match-code' calls).  This is the version prepared for
+;; upstream (~/dev/ref/markdown-mode, branch fix/inline-code-span-cache):
+;; same results and match data as the original (identical faces on 679
+;; files), cached per block until the text changes.  Upstream issues:
+;; jrblevin/markdown-mode #391, #691, #799.  Notes:
+;; ~/forge/vault/devenv/emacs/16-markdown-mode-pr-inline-code-cache.org.
+;; Drops itself once upstream ships `markdown--inline-code-spans'.
+
+(defvar-local +markdown--inline-code-spans-cache nil
+  "Cache of inline code spans for `markdown-inline-code-at-pos'.
+A cons (TICK . TABLE).  TICK is the `buffer-chars-modified-tick'
+the cache is valid for.  TABLE maps a text block's (BEG . END) to
+the value of `+markdown--inline-code-spans' for that block.")
+
+(defun +markdown--inline-code-spans (beg end)
+  "Return the inline code fragments of the text block from BEG to END.
+The value is a cons (SPANS . TAIL).  SPANS is a vector, in buffer
+order, of (GROUP-BEG MATCH-END MATCH-DATA) lists, one for each
+match of `markdown-match-code'.  TAIL is the match data left once
+`markdown-match-code' finds no more fragments, which is what the
+uncached scan tests when no fragment ends at or after the point.
+The value is cached until the buffer text changes."
+  (let ((tick (buffer-chars-modified-tick)))
+    (unless (eq (car +markdown--inline-code-spans-cache) tick)
+      (setq +markdown--inline-code-spans-cache
+            (cons tick (make-hash-table :test #'equal))))
+    (let ((table (cdr +markdown--inline-code-spans-cache))
+          (key (cons beg end)))
+      (or (gethash key table)
+          (puthash
+           key
+           (save-excursion
+             (save-match-data
+               (goto-char beg)
+               (let (spans)
+                 (while (markdown-match-code end)
+                   (let ((group (if (eq (char-after (match-beginning 0)) ?`)
+                                    0 1)))
+                     (push (list (match-beginning group) (match-end 0)
+                                 (match-data t))
+                           spans)))
+                 (cons (vconcat (nreverse spans)) (match-data t)))))
+           table)))))
+
+(defun +markdown-inline-code-at-pos (pos &optional from)
+  "Return non-nil if there is an inline code fragment at POS starting at FROM.
+Uses the beginning of the block if FROM is nil.
+Return nil otherwise.  Set match data according to
+`markdown-match-code' upon success.
+This function searches the block for a code fragment that
+contains the point using `markdown-match-code'.  We do this
+because `thing-at-point-looking-at' does not work reliably with
+`markdown-regex-code'.  When FROM is nil, the fragments of each
+block are cached until the buffer text changes, so repeated calls
+in one block, as during fontification, don't rescan it.
+
+The match data is set as follows:
+Group 1 matches the opening backquotes.
+Group 2 matches the code fragment itself, without backquotes.
+Group 3 matches the closing backquotes."
+  (save-excursion
+    (goto-char pos)
+    (let ((old-point (point))
+          (end-of-block (progn (markdown-end-of-text-block) (point)))
+          found)
+      (if from
+          (progn
+            (goto-char from)
+            (while (and (markdown-match-code end-of-block)
+                        (setq found t)
+                        (< (match-end 0) old-point))))
+        ;; Same result as the scan above, from the cache: stop at the
+        ;; first fragment ending at or after OLD-POINT, or else at the
+        ;; match data the scan leaves when it runs out of fragments.
+        (markdown-beginning-of-text-block)
+        (let* ((cached (+markdown--inline-code-spans (point) end-of-block))
+               (spans (car cached))
+               (lo 0)
+               (hi (length spans)))
+          (while (< lo hi)
+            (let ((mid (/ (+ lo hi) 2)))
+              (if (< (nth 1 (aref spans mid)) old-point)
+                  (setq lo (1+ mid))
+                (setq hi mid))))
+          (when (> (length spans) 0)
+            (setq found t)
+            (set-match-data (if (< lo (length spans))
+                                (nth 2 (aref spans lo))
+                              (cdr cached))))))
+      (let ((match-group (if (eq (char-after (match-beginning 0)) ?`) 0 1)))
+        (and found                                        ; matched something
+             (<= (match-beginning match-group) old-point) ; match contains old-point
+             (> (match-end 0) old-point))))))
+
+(after! markdown-mode
+  (unless (fboundp 'markdown--inline-code-spans)
+    (advice-add 'markdown-inline-code-at-pos :override #'+markdown-inline-code-at-pos)))
