@@ -624,7 +624,10 @@ Skips wrapping if already inside a nix shell (e.g., via direnv)."
 (use-package! agent-shell-attention
   :after agent-shell
   :init
+  ;; C-c / a only visits sessions *awaiting* you (an unseen finished turn, or
+  ;; a permission prompt); visiting clears "awaiting".  C-c / i goes to idle ones.
   (map! "C-c / a" #'agent-shell-attention-jump
+        "C-c / i" #'agent-shell-attention-jump-idle
         "C-c / A" #'agent-shell-attention-dashboard)
   :config
   (setq agent-shell-attention-render-function #'agent-shell-attention-render-active
