@@ -804,6 +804,24 @@ focus to be seen."
         (run-with-timer 300 300 #'+workspace/autosave-session)))
 
 
+;;; === emojify: no timers inside redisplay ===
+
+;; `emojify-display-emojis-in-region' runs from jit-lock, inside redisplay,
+;; and calls (sit-for 0 t) in its loop "to let with-timeout kick in".  sit-for
+;; starts with (input-pending-p t), which runs any timer that's due.  So a timer
+;; that edits the buffer being drawn (agent-shell-chat's zero-delay relabel,
+;; scheduled on every streaming event) ran mid-redisplay, and redisplay read
+;; from stale positions and aborted in bidi_get_type: the 2026-10-16/17 daemon
+;; crashes (forge vault/devenv/incidents/2026-10-16-emacs-daemon-abort-bidi-redisplay.org).
+;; Without sit-for, emojify still displays emoji; it only loses its 1s timeout.
+(defun +emojify-no-sit-for-a (fn &rest args)
+  "Call FN with ARGS with `sit-for' disabled, so no timer runs mid-redisplay."
+  (cl-letf (((symbol-function 'sit-for) #'ignore))
+    (apply fn args)))
+
+(after! emojify
+  (advice-add 'emojify-display-emojis-in-region :around #'+emojify-no-sit-for-a))
+
 ;;; === Crash watch (temporary) ===
 
 ;; Instrumentation for the 2026-10-16 redisplay aborts in agent-shell
