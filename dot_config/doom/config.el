@@ -804,6 +804,31 @@ focus to be seen."
         (run-with-timer 300 300 #'+workspace/autosave-session)))
 
 
+;;; === Crash watch (temporary) ===
+
+;; Instrumentation for the 2026-10-16 redisplay aborts in agent-shell
+;; (forge vault/devenv/incidents/2026-10-16-emacs-daemon-abort-bidi-redisplay.org):
+;; breadcrumbs, invalid-character checks and an on-disk ACP traffic log, all in
+;; ~/.cache.  Set `+crashwatch-enable' to nil (before this runs, or in a
+;; machine-local file) to skip it; M-x cautomaton/crashwatch-stop turns it off
+;; in a running daemon.  Remove this block once the bug is pinned.
+(defvar +crashwatch-enable t
+  "Non-nil to load and start forge's crash watch at startup.")
+
+(defvar +crashwatch-file "~/forge/src/elisp/cautomaton-crashwatch.el"
+  "Where the crash watch lives.")
+
+(when (and +crashwatch-enable (file-exists-p +crashwatch-file))
+  (load +crashwatch-file nil t)
+  ;; One set of logs per daemon, so a second daemon (--fg-daemon=perf) doesn't
+  ;; interleave with the main one.
+  (let ((suffix (if (stringp (daemonp)) (concat "-" (daemonp)) "")))
+    (setq cautomaton/crashwatch-log
+          (expand-file-name (format "~/.cache/emacs-crashwatch%s.log" suffix))
+          cautomaton/crashwatch-traffic-log
+          (expand-file-name (format "~/.cache/emacs-acp-traffic%s.log" suffix))))
+  (cautomaton/crashwatch-start))
+
 ;;; === Agent Multitasking ===
 
 ;; Make agent-shell-manager visible across ALL workspaces
