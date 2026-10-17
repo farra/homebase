@@ -61,6 +61,15 @@ if [[ -f /run/.containerenv ]]; then
     export PATH="$HOME/.local/lib/distrobox-host-wrappers:$PATH"
 fi
 
+# A shell started inside a loaded nix/direnv env (agent subshells, `zsh -c`
+# under the Emacs daemon) inherits the project's /nix/store paths, and the
+# prepends above bury them under Homebrew, so brew's python3 shadows the
+# project's. Keep the nix store entries first. (2026-10-17)
+if [[ -n "$IN_NIX_SHELL" || -n "$DIRENV_DIR" ]]; then
+    typeset -U path
+    path=(${(M)path:#/nix/store/*} ${path:#/nix/store/*})
+fi
+
 # The box has no system D-Bus of its own; the host's is mounted under /run/host.
 # Pointing at it lets logind clients work, e.g. Emacs 31's system-sleep, which
 # agent-shell uses to keep the machine awake during agent turns.
