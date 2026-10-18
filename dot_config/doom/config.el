@@ -868,6 +868,39 @@ focus to be seen."
 
 (add-hook 'agent-shell-mode-hook #'+agent-shell--add-to-perspective)
 
+;; Name each agent-shell buffer after its session title ("<title> @ <project>"),
+;; so several sessions in one project are told apart by their work, not <N>.
+;; claude-agent-acp generates the title once per session (a /rename replaces it)
+;; and agent-shell re-fetches it on resume.  Keeps the " @ <project>" suffix that
+;; `+agent-shell-manager--extract-workspace' parses.
+(defun +agent-shell-title-buffer (&optional buffer)
+  "Rename agent-shell BUFFER (default: current) after its session title."
+  (with-current-buffer (or buffer (current-buffer))
+    (when-let* ((title (map-nested-elt agent-shell--state '(:session :title)))
+                (name (format "%s @ %s"
+                              (truncate-string-to-width title 48 nil nil "…")
+                              (agent-shell--project-name)))
+                ((not (string-prefix-p name (buffer-name)))))
+      (let ((shell (current-buffer))
+            (viewport (get-buffer (concat (buffer-name) " [viewport]"))))
+        (shell-maker-set-buffer-name shell name)
+        (when (buffer-live-p viewport)
+          (with-current-buffer viewport
+            (rename-buffer (concat (buffer-name shell) " [viewport]") t)))))))
+
+(defun +agent-shell-title-subscribe ()
+  "Rename this agent-shell buffer whenever its session title changes."
+  (let ((buffer (current-buffer)))
+    (agent-shell-subscribe-to
+     :shell-buffer buffer
+     :event 'session-title-changed
+     :on-event (lambda (_event)
+                 (when (buffer-live-p buffer)
+                   (+agent-shell-title-buffer buffer))))
+    (+agent-shell-title-buffer buffer)))
+
+(add-hook 'agent-shell-mode-hook #'+agent-shell-title-subscribe)
+
 ;; Fix agent-shell-manager-goto to switch workspaces when needed
 (defun +agent-shell-manager--extract-workspace (buffer)
   "Extract workspace name from agent-shell BUFFER name.
