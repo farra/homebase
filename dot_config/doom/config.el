@@ -459,6 +459,10 @@ don't break indentation (tested: ~1 changed line per header vs 7-36)."
   (setq agent-shell-anthropic-authentication
         (agent-shell-anthropic-make-authentication :login t))
 
+  ;; Start Claude sessions in auto mode (claude-agent-acp's "auto": a
+  ;; classifier approves routine actions) instead of Manual.
+  (setq agent-shell-anthropic-default-session-mode-id "auto")
+
   ;; Set Claude as default agent (commented out to enable agent selection prompt)
   ;; (setq agent-shell-preferred-agent-config
   ;;       (agent-shell-anthropic-make-claude-code-config))
