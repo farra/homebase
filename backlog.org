@@ -263,6 +263,13 @@ BOOTSTRAP.md notes the full flow is untested on fresh Bazzite, WSL, or macOS ins
 
 DECISIONS.md has an unresolved question about Dropbox on Bazzite for the forge vault. Currently forge clones via SSH from GitHub, but any Dropbox vault dependency would be a manual step not captured in bootstrap.
 
+* Waiting on humans                                                      :handback:
+:PROPERTIES:
+:CATEGORY: homebase
+:END:
+Handbacks: items an agent is waiting on a person for (review, decision, or an act only they can
+do). See CLAUDE.md, "Handbacks". Forge's handback view (=C-c a f h=) reads this section.
+
 * Version Milestones
 
 Quick links to version-specific work:

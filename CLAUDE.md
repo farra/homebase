@@ -251,6 +251,28 @@ which emacs rg fd fzf bat starship
 - Check chezmoi: `chezmoi diff`
 - Check 1Password: `op account list`
 
+## Handbacks (items waiting on a human)
+
+When you need a decision, review or action from a person, file it in `backlog.org` under
+`* Waiting on humans`, the moment you're blocked, then carry on with other work if you can.
+States: REVIEW (look at delivered work) or TODO (decide or act). Give each `:OWNER:` (a person,
+e.g. `aaron`), `:RAISED_BY:` (the session or lane) and `:CREATED:`, a heading that stands alone,
+a line of context, a *Recommendation:*, and a link to the doc that holds the detail. Mark it DONE
+(never delete) once you've checked it's resolved. This repo is public: anything that shouldn't
+be (a live security weakness, personal context) goes under the same heading in the matching forge
+project hub instead, usually `~/forge/journal/projects/devenv.org`.
+
+**Review classes: check before you change things.**
+- *Proceed, then report* (in the worklog): reversible, local changes inside your lane, such as a
+  fix, a refactor, a doc correction, instrumentation, or a guard for a diagnosed bug.
+- *Proposal and REVIEW first:* security and secrets; anything every process or machine runs
+  (shell init, editor startup config, the box image); anything public (pushing to a public repo,
+  filing upstream); architecture. When in doubt, it's this class.
+- For those, and for work you discover along the way that Aaron should understand before it
+  changes: write a proposal (what's already right, the problem, options with costs, a
+  recommendation, questions for the review), file a REVIEW handback pointing at it, split out
+  anything urgent as its own TODO, and record Aaron's decision in the proposal afterwards.
+
 ## Design Doc Workflow
 
 This project uses design docs for task management. Design docs live in `docs/design/`.
