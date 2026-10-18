@@ -623,6 +623,12 @@ Skips wrapping if already inside a nix shell (e.g., via direnv)."
   (map! "C-c / h" #'agent-shell-hq-toggle
         "C-c / p" #'agent-shell-hq-peek))
 
+;; A session's workflows and subagents, read from Claude's session files (ACP
+;; doesn't report them).  forge src/elisp/cautomaton-agent-tasks.el.
+(when (file-exists-p "~/forge/src/elisp/cautomaton-agent-tasks.el")
+  (autoload 'cautomaton/agent-tasks "cautomaton-agent-tasks" nil t)
+  (map! "C-c / t" #'cautomaton/agent-tasks))
+
 ;; attention: mode-line count of sessions waiting on Aaron, jump to the
 ;; oldest, a status-sorted dashboard, desktop notifications.
 (use-package! agent-shell-attention
