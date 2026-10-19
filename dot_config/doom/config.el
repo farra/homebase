@@ -178,6 +178,11 @@ that `ghostel' never sees (and loading ghostel inside it then errors)."
  "\C-x\m"   #'execute-extended-command
  )
 
+;; Vibe Typer's "Plain Text" insertion sends C-S-v after setting the clipboard.
+;; Unbound, it shift-translates to C-v (scroll), so dictation went nowhere.
+;; agent-shell remaps yank to its image-aware agent-shell-yank-dwim.
+(map! "C-S-v" #'yank)
+
 ;; Always confirm before closing frame or quitting Emacs
 (defun +save-buffers-kill-terminal-with-confirm ()
   "Like `save-buffers-kill-terminal' but always confirm first."
