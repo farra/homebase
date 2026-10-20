@@ -105,6 +105,21 @@ that `ghostel' never sees (and loading ghostel inside it then errors)."
                    "main"))))
     (ghostel arg)))
 
+;; org-semantic: search forge by meaning (or by word, with a prefix in the
+;; prompt). The binary and index are forge's (`just vault-search-install',
+;; `just vault-index'); agents use the same index through the vault-search skill.
+;; forge vault/devenv/forge-vault-search.org
+(use-package! org-semantic
+  :when (file-executable-p "~/forge/.tools/org-semantic/org-semantic")
+  :commands (org-semantic-find org-semantic-find-in-directory
+             org-semantic-find-at-point org-semantic-reindex)
+  :init
+  (setq org-semantic-vault-root "~/forge/"
+        org-semantic-executable (expand-file-name "~/forge/.tools/org-semantic/org-semantic"))
+  (map! :leader
+        :desc "Search notes by meaning" "n V" #'org-semantic-find)
+  :hook (org-semantic-results-mode . next-error-follow-minor-mode))
+
 (use-package! ghostel
   :commands (ghostel ghostel-project)
   :init

@@ -110,3 +110,8 @@
 ;; epdfinfo is compiled against the image's poppler instead of needing
 ;; autoconf + poppler-glib headers in the box. Same pattern as vterm.
 (package! pdf-tools :built-in 'prefer)
+
+;; org-semantic - semantic + lexical (BM25) search over org notes. Client
+;; only; the binary is forge's pinned copy (`just vault-search-install').
+;; forge vault/devenv/forge-vault-search.org
+(package! org-semantic)
