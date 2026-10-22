@@ -311,7 +311,10 @@ Known gap: `agy` has no ACP mode, so agent-shell's Google provider (`C-c / g`) i
 *Resolved 2026-09-22:* Google ships a separate ACP server, `agy_acp_server`, published in the
 ACP registry (`antigravity-acp`), and agent-shell added an `agent-shell-antigravity` provider for
 it on 2026-08-22. `homebase agent install|update acp` now installs it to
-`~/.local/bin/agy_acp_server.par`, and `C-c / g` starts it.
+`~/.local/bin/agy_acp_server.par`, and `C-c / g` starts it. The matching
+`localharness_external` must be installed beside the server for harness discovery.
+The installer checks both executables before skipping a download, so an incomplete
+installation is repaired even when the release version is unchanged.
 
 #### agy account switching
 
