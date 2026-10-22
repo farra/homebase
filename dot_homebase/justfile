@@ -717,6 +717,8 @@ p4-login:
 #   homebase agent update codex     # update only codex
 #
 # Agents: claude | claude-desktop | codex | antigravity | acp
+# "all" leaves out claude-desktop: not installed on Linux for now (forge
+# vault/devenv/homebase/desktop-ai-apps-on-bazzite-2026-10-22.org). Name it to install it.
 
 # [any] Install or update AI agent CLIs, desktop app, and ACP adapters
 agent action name="all":
@@ -764,6 +766,10 @@ agent action name="all":
     _update_claude_desktop() {
         if [[ ! -f /run/.containerenv ]]; then
             echo "Not in a distrobox. Run this inside the home container."
+            return 0
+        fi
+        if ! rpm -q claude-desktop &>/dev/null; then
+            echo "Claude Desktop not installed — skipping."
             return 0
         fi
         sudo dnf upgrade -y claude-desktop
@@ -865,6 +871,7 @@ agent action name="all":
     }
 
     all_agents=(claude claude-desktop codex antigravity acp)
+    default_agents=(claude codex antigravity acp)
 
     _dispatch_one() {
         local act="$1" agent="$2"
@@ -888,11 +895,23 @@ agent action name="all":
     case "$action" in
         install|update)
             if [[ "$name" == "all" ]]; then
-                for a in "${all_agents[@]}"; do
+                # One agent failing must not stop the rest from updating. Each
+                # runs in its own subshell with errexit on: under `||`, bash
+                # would ignore set -e inside it, hiding a failure mid-function.
+                failed=()
+                for a in "${default_agents[@]}"; do
                     echo "── $action $a ──"
-                    _dispatch_one "$action" "$a"
+                    set +e
+                    (set -e; _dispatch_one "$action" "$a")
+                    rc=$?
+                    set -e
+                    (( rc == 0 )) || failed+=("$a")
                     echo ""
                 done
+                if (( ${#failed[@]} )); then
+                    echo "FAILED: ${failed[*]}"
+                    exit 1
+                fi
             else
                 _dispatch_one "$action" "$name"
             fi
