@@ -172,6 +172,19 @@ if [[ -z "$GITHUB_TOKEN" ]] && [[ -f "$HOME/.config/op/homebase-secrets.env" ]] 
     load-secrets
 fi
 
+# Warn when the disk behind ~ or ~/dev is nearly full. Home reached 94% unnoticed
+# (2026-10-21: Dropbox and old podman images). Silent below the threshold.
+homebase-disk-check() {
+    local threshold=${1:-90} seen="" dev pct avail mnt
+    while read -r dev _ _ avail pct mnt; do
+        [[ "$seen" == *"|$dev|"* ]] && continue
+        seen+="|$dev|"
+        pct=${pct%\%}
+        (( pct >= threshold )) && print -P "%F{yellow}⚠ ${mnt} is ${pct}%% full ($(( avail / 1048576 ))G free)%f"
+    done < <(df -Pk "$HOME" "$HOME/dev" 2>/dev/null | tail -n +2)
+}
+[[ -o interactive ]] && homebase-disk-check
+
 # zoxide (smart cd — use z instead of cd)
 if command -v zoxide &> /dev/null; then
     eval "$(zoxide init zsh)"
