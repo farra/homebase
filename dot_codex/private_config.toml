@@ -1,5 +1,5 @@
 personality = "pragmatic"
-model = "gpt-5.5"
+model = "gpt-6.1-sol"
 model_reasoning_effort = "xhigh"
 approvals_reviewer = "auto_review"
 
@@ -17,5 +17,15 @@ enabled = true
 [projects."/home/jaaron/dev/.worktrees"]
 trust_level = "trusted"
 
+[projects."/home/jaaron/dev/jmt/gongfu"]
+trust_level = "trusted"
+
+[projects."/home/jaaron/forge"]
+trust_level = "trusted"
+
+[tui]
+screen_reader_detection_done = true
+
 [tui.model_availability_nux]
 "gpt-5.5" = 2
+"gpt-6.1-sol" = 4
