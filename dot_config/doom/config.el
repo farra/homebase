@@ -483,6 +483,11 @@ don't break indentation (tested: ~1 changed line per header vs 7-36)."
   ;; classifier approves routine actions) instead of Manual.
   (setq agent-shell-anthropic-default-session-mode-id "auto")
 
+  ;; Don't block system sleep during agent turns; Aaron manages sleep by
+  ;; hand.  It needs the system D-Bus, which a daemon started without the
+  ;; zshrc variable (278fcbe) can't reach, so it warned on every turn.
+  (setq agent-shell-inhibit-system-sleep nil)
+
   ;; Set Claude as default agent (commented out to enable agent selection prompt)
   ;; (setq agent-shell-preferred-agent-config
   ;;       (agent-shell-anthropic-make-claude-code-config))
