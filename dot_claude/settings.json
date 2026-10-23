@@ -75,5 +75,6 @@
       "**Org-specific CLIs**: None configured — project-local tooling observed: just, nix develop/nix-shell, cargo, gh, pulumi (usage context outside this repo's transcripts, not confirmed as org-specific here)",
       "routine under jamandtea/gongfu prefix: git push, just build/check/ci/clippy/doc/fmt, cargo test/clippy/fmt"
     ]
-  }
+  },
+  "cleanupPeriodDays": 3650
 }
