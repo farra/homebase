@@ -807,6 +807,12 @@ agent action name="all":
     }
 
     _update_antigravity() {
+        # A machine last updated before the Gemini CLI retirement has no agy
+        # yet; install it rather than fail the whole update run.
+        if ! command -v agy &>/dev/null; then
+            _install_antigravity
+            return
+        fi
         # Do not use `agy install` — it rewrites shell profile PATH and purges
         # aliases, which chezmoi owns via dot_zshrc.tmpl.
         agy update
