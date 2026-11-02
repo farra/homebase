@@ -272,6 +272,27 @@ that `ghostel' never sees (and loading ghostel inside it then errors)."
 
 (after! magit (cautomaton-worktree-init))
 
+;; magit summarizes a failed git command in the echo area from the last line
+;; matching `magit-process-error-message-regexps' ("error:", "fatal:").  A hook
+;; that exits non-zero without such a line (most pre-commit checks) left that
+;; summary blank: "Git error:  [See ...]" (forge's gitleaks hook, 2026-11-02;
+;; that hook now ends with an "error:" line).  Fall back to the last non-blank
+;; line of the failed command's output.
+(defun +magit-process-error-summary-fallback (orig process-buf section)
+  (or (funcall orig process-buf section)
+      (and (buffer-live-p process-buf)
+           (oref section content)
+           (with-current-buffer process-buf
+             (save-excursion
+               (goto-char (oref section end))
+               (and (re-search-backward "^[ \t]*\\([^ \t\n].*?\\)[ \t]*$"
+                                        (oref section content) t)
+                    (truncate-string-to-width (match-string-no-properties 1)
+                                              200 nil nil "…")))))))
+(after! magit-process
+  (advice-add 'magit-process-error-summary :around
+              #'+magit-process-error-summary-fallback))
+
 ;; J&T Project Elisp
 (use-package! gongfu-mode
   :when (file-directory-p "~/dev/jmt/gongfu/tools/emacs/")
