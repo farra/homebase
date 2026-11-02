@@ -300,6 +300,10 @@ Do **not** run `agy install`: it appends PATH to the shell profile and purges al
 
 Config keeps living under `~/.gemini/` — `agy` reads `~/.gemini/antigravity-cli/settings.json`
 and still honors `~/.gemini/GEMINI.md`, so `dot_gemini/` stays the chezmoi source directory.
+`GEMINI.md` itself is `create_GEMINI.md` (2026-10-29): chezmoi writes it on a new machine and
+then leaves it alone, because Gemini's `save_memory` appends to it and a managed file would be
+reset by the next `chezmoi apply`. Forge snapshots it as agent memory
+(`src/agent_transcripts/`, the `gemini` memory source).
 Global MCP servers move out of `settings.json` into a standalone
 `~/.gemini/antigravity-cli/mcp_config.json` (per-workspace: `.agents/mcp_config.json`), with
 `url`/`httpUrl` keys renamed to `serverUrl`. Skills move from `~/.gemini/skills/` to

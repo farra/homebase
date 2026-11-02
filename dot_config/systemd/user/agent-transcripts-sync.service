@@ -1,0 +1,15 @@
+[Unit]
+Description=Back up and process AI agent transcripts (forge agents-32)
+Documentation=file://%h/forge/vault/agents/agents-32-transcripts-store-and-use.org
+# Only on machines with forge checked out.
+ConditionPathExists=%h/forge/justfile
+
+[Service]
+Type=oneshot
+# The pipeline's tools (python, just, org-semantic) come from forge's dev
+# environment inside the home box, so enter the box and load it with direnv.
+# Copy B is plain files: no 1Password session is needed.
+ExecStart=/usr/bin/distrobox enter home -- zsh -lc 'direnv exec ~/forge just --justfile ~/forge/justfile agent-transcripts-sync'
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=2h

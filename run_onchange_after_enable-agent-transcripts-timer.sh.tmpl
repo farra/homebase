@@ -1,0 +1,20 @@
+{{- if eq .chezmoi.os "linux" -}}
+#!/usr/bin/env bash
+# Enable the daily agent-transcripts sync timer (forge agents-32, step 8).
+# Reruns when either unit changes:
+# service {{ include "dot_config/systemd/user/agent-transcripts-sync.service" | sha256sum }}
+# timer   {{ include "dot_config/systemd/user/agent-transcripts-sync.timer" | sha256sum }}
+set -euo pipefail
+
+[ -f "$HOME/forge/justfile" ] || { echo "agent-transcripts timer: no ~/forge, skipped"; exit 0; }
+
+# Inside the distrobox, the user manager is the host's.
+if [ -n "${CONTAINER_ID:-}" ] || [ -f /run/.containerenv ]; then
+    sc() { distrobox-host-exec systemctl --user "$@"; }
+else
+    sc() { systemctl --user "$@"; }
+fi
+sc daemon-reload
+sc enable --now agent-transcripts-sync.timer
+sc list-timers agent-transcripts-sync.timer --no-pager
+{{ end -}}

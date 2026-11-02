@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily agent-transcripts sync (forge agents-32)
+
+[Timer]
+OnCalendar=*-*-* 04:00:00
+RandomizedDelaySec=30min
+# Run at the next wake or boot when the machine was off or asleep at 04:00.
+Persistent=true
+
+[Install]
+WantedBy=timers.target

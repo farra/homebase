@@ -500,16 +500,11 @@ don't break indentation (tested: ~1 changed line per header vs 7-36)."
   (setq agent-shell-openai-authentication
         (agent-shell-openai-make-authentication :login t))
 
-  ;; Store transcripts in forge vault, organized by project
-  (setq agent-shell-transcript-file-path-function
-        (lambda ()
-          (let* ((project-name (file-name-nondirectory
-                                (directory-file-name (agent-shell-cwd))))
-                 (dir (expand-file-name
-                       (concat "~/forge/vault/agent-shell/" project-name "/transcripts/")))
-                 (filename (format-time-string "%F-%H-%M-%S.md")))
-            (make-directory dir t)
-            (expand-file-name filename dir))))
+  ;; Transcripts stay at agent-shell's default, <project>/.agent-shell/transcripts/
+  ;; (agent-shell adds .agent-shell/ to .git/info/exclude).  Until 2026-11-02 they
+  ;; went to ~/forge/vault/agent-shell/<project>/transcripts/ and were committed
+  ;; to forge's git; forge's agent-transcripts sync archives both places to
+  ;; Dropbox (forge agents-32 step 9, src/agent_transcripts/sources.toml).
 
   ;; Provider-specific bindings (after agent-shell loads)
   ;; C-c / g drives Antigravity through Google's agy_acp_server, not the
@@ -654,6 +649,14 @@ Skips wrapping if already inside a nix shell (e.g., via direnv)."
   (autoload 'cautomaton/agent-tasks "cautomaton-agent-tasks" nil t)
   (map! "C-c / t" #'cautomaton/agent-tasks))
 
+;; A log of agent-shell buffers opening and closing, and of daemon starts and
+;; exits, so a crash leaves a record of what was running (incident
+;; 2026-10-28).  Read it with `just agent-shell-log'.  forge
+;; src/elisp/cautomaton-agent-shell-log.el.
+(when (file-exists-p "~/forge/src/elisp/cautomaton-agent-shell-log.el")
+  (require 'cautomaton-agent-shell-log)
+  (cautomaton/agent-shell-log-enable))
+
 ;; attention: mode-line count of sessions waiting on Aaron, jump to the
 ;; oldest, a status-sorted dashboard, desktop notifications.
 (use-package! agent-shell-attention
@@ -680,9 +683,10 @@ Skips wrapping if already inside a nix shell (e.g., via direnv)."
                              :follow #'agent-shell-links-org-follow
                              :store #'agent-shell-links-org-store)))
 
-;; recall: index, search and resume transcripts.  Ours live in
-;; ~/forge/vault/agent-shell/<project>/transcripts/, not the default
-;; <project>/.agent-shell/transcripts/.
+;; recall: index, search and resume transcripts.  New ones are at the default
+;; <project>/.agent-shell/transcripts/ (projects at ~/dev/<group>/<name>, depth
+;; 4 from ~/dev); the ones written before 2026-11-02 stay in
+;; ~/forge/vault/agent-shell/<project>/transcripts/, indexed as extra dirs.
 (use-package! agent-recall
   :commands (agent-recall-search agent-recall-search-live agent-recall-browse
              agent-recall-browse-project agent-recall-resume agent-recall-reindex)
@@ -690,9 +694,15 @@ Skips wrapping if already inside a nix shell (e.g., via direnv)."
   (map! "C-c / r" #'agent-recall-search-live
         "C-c / R" #'agent-recall-browse)
   :config
-  (setq agent-recall-search-paths '("~/forge/vault/agent-shell")
-        agent-recall-transcript-dir-name "transcripts"
-        agent-recall-max-depth 2
+  (setq agent-recall-search-paths '("~/forge" "~/dev")
+        agent-recall-max-depth 4
+        agent-recall-extra-transcript-dirs
+        (mapcar (lambda (dir)
+                  (list :dir dir
+                        :project (file-name-nondirectory
+                                  (directory-file-name (file-name-directory
+                                                        (directory-file-name dir))))))
+                (file-expand-wildcards "~/forge/vault/agent-shell/*/transcripts"))
         agent-recall-search-function 'consult-ripgrep))
 
 ;; ob-agent-shell: #+begin_src agent-shell blocks run in the live session.

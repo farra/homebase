@@ -39,4 +39,6 @@ docs
 {{ if ne .chezmoi.os "linux" }}
 .config/autostart/input-remapper-autoload.desktop
 .config/input-remapper-2
+.config/systemd/user/agent-transcripts-sync.service
+.config/systemd/user/agent-transcripts-sync.timer
 {{ end }}
