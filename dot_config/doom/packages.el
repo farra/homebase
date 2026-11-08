@@ -89,6 +89,11 @@
 ;; with Doom's persp-mode sessions. See the notes before turning it on.
 (package! agent-shell-desktop
   :recipe (:host github :repo "timfel/agent-shell-desktop.el"))
+;; Git worktrees as perspectives, with their agent sessions and a dashboard.
+;; Aaron's own package, released 2026-10-27 from forge's cautomaton-worktree.
+;; Unpinned while it's being dogfooded: `doom sync -u' pulls the latest.
+(package! agent-shell-perspectives
+  :recipe (:host github :repo "farra/agent-shell-perspectives"))
 
 ;; Justfile support
 (package! just-mode)

@@ -267,10 +267,7 @@ that `ghostel' never sees (and loading ghostel inside it then errors)."
   (require 'cautomaton-capture)
   (require 'cautomaton-backlog)
   (require 'cautomaton-dev-status)
-  (require 'cautomaton-activity)
-  (require 'cautomaton-worktree))
-
-(after! magit (cautomaton-worktree-init))
+  (require 'cautomaton-activity))
 
 ;; magit summarizes a failed git command in the echo area from the last line
 ;; matching `magit-process-error-message-regexps' ("error:", "fatal:").  A hook
@@ -649,6 +646,19 @@ Skips wrapping if already inside a nix shell (e.g., via direnv)."
   :config
   ;; Display at bottom (default)
   (setq agent-shell-manager-side 'bottom))
+
+;; Git worktrees as perspectives, with their agent sessions and a dashboard
+;; (github.com/farra/agent-shell-perspectives; replaced forge's
+;; cautomaton-worktree 2026-11-06).  Its command map sits on C-c ., the
+;; old prefix, so the keys are the same (w dashboard, c create, o checkout,
+;; C clone, s switch, d dispose, i issues) plus a for a new agent.  Not
+;; C-c w as the README suggests: that is Doom's workspace prefix.
+(use-package! agent-shell-perspectives
+  :after (agent-shell persp-mode)
+  :config
+  (setq agent-shell-perspectives-default-group "me")
+  (agent-shell-perspectives-setup)
+  (map! "C-c ." #'agent-shell-perspectives-command-map))
 
 ;; ============================================================
 ;; agent-shell add-ons (trial 2026-10-16)
@@ -1056,7 +1066,7 @@ Advises `ask-user-about-supersession-threat'."
 ;; Keybindings
 ;; NOTE: Leader-based bindings (SPC a) conflict with existing bindings
 ;; in non-evil Doom. Using C-c bindings instead:
-;;   C-c .   → agent-shell
+;;   C-c .   → agent-shell-perspectives (worktrees)
 ;;   C-c , m → agent-shell-manager-toggle
 ;; (map! :leader
 ;;       (:prefix ("a" . "agents")
