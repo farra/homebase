@@ -194,6 +194,15 @@ Multi-machine notes:
 - No host gating: autoload only touches devices that are plugged in, so absent devices are skipped.
   (The old hostname gate never worked; both Bazzite boxes report `bazzite`.)
 
+## AppImages
+
+Host-level AppImages live in `~/AppImages` (Gear Lever's default folder), never `~/Downloads`.
+`homebase.toml` `[appimages]` declares them; `homebase setup-appimages` downloads any that are
+missing. Updates stay with each app or with Gear Lever; homebase never pins or replaces one.
+`homebase doctor` checks that declared AppImages exist and that no autostart or menu entry points
+at a missing program or into `~/Downloads`. Hand-written launchers (Ghostty's) are chezmoi
+templates under `dot_local/share/applications/`. Rationale: DECISIONS.md §11.
+
 ## Repository Structure
 
 ```
@@ -222,6 +231,7 @@ Multi-machine notes:
 ├── dot_gitconfig.tmpl            # Git config (templated)
 ├── dot_config/input-remapper-2/config.json       # input-remapper autoload
 ├── dot_config/autostart/input-remapper-autoload.desktop  # login autoload (overrides Bazzite's hidden entry)
+├── dot_local/share/applications/ghostty.desktop.tmpl  # Ghostty AppImage launcher (Ctrl+Alt+T)
 ├── dot_config/input-remapper-2/presets/...        # device-specific mapping presets
 ├── run_once_before_import-gpg-keys.sh.tmpl  # Import GPG keys from 1Password
 ├── run_onchange_create-authinfo-gpg.sh.tmpl # Encrypted ~/.authinfo.gpg from 1Password (PAT, Bluesky)

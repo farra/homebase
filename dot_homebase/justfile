@@ -32,7 +32,7 @@ auth:
 # ── First-Time Setup ─────────────────────────────────────────────────────
 
 # [any] Core setup shared by all profiles
-setup-core: setup-workspace setup-flatpaks doom-install (agent "install")
+setup-core: setup-workspace setup-flatpaks setup-appimages doom-install (agent "install")
     @echo ""
     @echo "Core setup complete!"
     @echo "  - Workspace directories created"
@@ -422,6 +422,71 @@ remove-flatpak app_id:
     flatpak uninstall --noninteractive "{{app_id}}"
     echo "Removed: {{app_id}}"
     echo "Remember to also remove it from homebase.toml [flatpaks] apps."
+
+# ── AppImages ────────────────────────────────────────────────────────────
+
+# [host] Download AppImages declared in homebase.toml into ~/AppImages — first install only
+# Updates stay with each app (self) or Gear Lever (gearlever); homebase never pins or replaces.
+setup-appimages:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    if [[ "$(uname -s)" != Linux ]]; then
+        echo "Not Linux — skipping AppImage setup."
+        exit 0
+    fi
+    CHEZMOI_SOURCE="$(chezmoi source-path 2>/dev/null || echo "$HOME/.local/share/chezmoi")"
+    PARSER="${CHEZMOI_SOURCE}/scripts/parse-toml-array.sh"
+    TOML="${HOMEBASE_TOML:-${CHEZMOI_SOURCE}/homebase.toml}"
+    DIR="$HOME/AppImages"
+    if [[ ! -x "$PARSER" ]]; then
+        echo "ERROR: TOML parser not found: $PARSER"
+        exit 1
+    fi
+    mkdir -p "$DIR"
+    _resolve() {
+        # gh:<owner>/<repo>:<glob> → newest release asset URL matching <glob>
+        local spec="${1#gh:}" repo glob url
+        repo="${spec%%:*}"; glob="${spec#*:}"
+        while IFS= read -r url; do
+            # shellcheck disable=SC2053
+            [[ "${url##*/}" == $glob ]] && { echo "$url"; return 0; }
+        done < <(curl -fsSL "https://api.github.com/repos/$repo/releases/latest" \
+                 | grep -o '"browser_download_url": *"[^"]*"' | sed 's/.*"\(http[^"]*\)"$/\1/')
+        return 1
+    }
+    if ! entries="$("$PARSER" appimages apps "$TOML")"; then
+        echo "ERROR: cannot read [appimages] apps from $TOML"
+        exit 1
+    fi
+    echo "Installing AppImages from homebase.toml into $DIR..."
+    while IFS='|' read -r file updates source; do
+        [[ -z "$file" ]] && continue
+        target="$DIR/$file"
+        if [[ -e "$target" ]]; then
+            echo "  Already installed: $file (updates: $updates)"
+            continue
+        fi
+        url="$source"
+        if [[ "$source" == manual ]]; then
+            echo "  MANUAL: $file has no stable download URL — fetch it by hand into $DIR"
+            continue
+        elif [[ "$source" == gh:* ]]; then
+            if ! url=$(_resolve "$source"); then
+                echo "  ERROR: no release asset for $file matching ${source#gh:}"
+                continue
+            fi
+        fi
+        echo "  Downloading $file from $url"
+        tmp="$(mktemp "$DIR/.${file}.XXXXXX")"
+        if curl -fL --progress-bar -o "$tmp" "$url"; then
+            chmod 755 "$tmp" && mv "$tmp" "$target"
+            echo "  Installed: $file (updates: $updates)"
+        else
+            rm -f "$tmp"
+            echo "  ERROR: download failed for $file"
+        fi
+    done <<< "$entries"
+    echo "AppImage setup complete. Launchers: an app's own, or chezmoi's (dot_local/share/applications)."
 
 # ── Box Lifecycle ────────────────────────────────────────────────────────
 #

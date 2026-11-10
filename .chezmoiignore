@@ -41,4 +41,5 @@ docs
 .config/input-remapper-2
 .config/systemd/user/agent-transcripts-sync.service
 .config/systemd/user/agent-transcripts-sync.timer
+.local/share/applications/ghostty.desktop
 {{ end }}

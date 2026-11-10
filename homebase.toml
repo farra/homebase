@@ -3,6 +3,7 @@
 # [host]      → Brewfile (Layer 0, all platforms)
 # [container] → flake.nix / images/Containerfile (Layer 1)
 # [workspace] → just setup-workspace (post-bootstrap)
+# [flatpaks], [appimages] → just setup-flatpaks, setup-appimages (host desktop apps)
 
 [host]
 # Minimal tools for the host OS (Homebrew)
@@ -140,11 +141,33 @@ apps = [
   "com.ktechpit.whatsie",
   # Developer
   "dev.zed.Zed",
+  # Voice (transcription; Vibe Typer is an AppImage, see [appimages])
+  "io.github.chidiwilliams.Buzz",
   # Browsers
   "com.brave.Browser",
   "app.zen_browser.zen",
   # Games (steam is pre-installed on Bazzite)
   "org.prismlauncher.PrismLauncher",
+]
+
+[appimages]
+# Host-level AppImages, kept in ~/AppImages (Gear Lever's default folder).
+# Never run one from ~/Downloads: `homebase doctor` flags it.
+# Install: homebase setup-appimages   (first install only: downloads what's missing)
+# Update:  per entry, never by homebase (no pins). `homebase doctor` checks they exist.
+#
+# Entry: "file|updates|source"
+#   file     name under ~/AppImages
+#   updates  self       the app updates itself in place
+#            gearlever  has zsync update info; update from Gear Lever
+#            manual     neither; re-download by hand
+#   source   https://...                 a stable "latest" URL
+#            gh:<owner>/<repo>:<glob>    newest GitHub release asset matching <glob>
+#            manual                      no stable URL; setup prints a reminder
+# Design: forge vault/devenv/homebase/appimages-in-homebase-2026-11-10.org
+apps = [
+  "ghostty.appimage|gearlever|gh:pkgforge-dev/ghostty-appimage:Ghostty-*-x86_64.AppImage",
+  "VibeTyper.AppImage|self|https://cdn.vibetyper.com/releases/linux/VibeTyper.AppImage",
 ]
 
 [workspace]

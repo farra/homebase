@@ -42,6 +42,8 @@ HOMEBASE_REPO="${HOMEBASE_REPO:-$HOME/dev/me/homebase}"
 CHEZMOI_SOURCE="$(chezmoi source-path 2>/dev/null || echo "$HOME/.local/share/chezmoi")"
 ACK_FILE="${HOMEBASE_DOCTOR_ACK:-$HOME/.homebase/doctor-ack}"
 LOCK_WARN_DAYS="${HOMEBASE_LOCK_WARN_DAYS:-60}"
+HOMEBASE_TOML="${HOMEBASE_TOML:-$CHEZMOI_SOURCE/homebase.toml}"
+APPIMAGE_DIR="${HOMEBASE_APPIMAGE_DIR:-$HOME/AppImages}"
 # Files whose change means the image should be rebuilt.
 IMAGE_INPUTS=(images/Containerfile flake.nix flake.lock homebase.toml)
 
@@ -207,11 +209,94 @@ check_lock() {
     fi
 }
 
+# ── e. launchers ──────────────────────────────────────────────────────────────
+
+_exec_path() {
+    # First program in a .desktop Exec= value, skipping `env` and VAR=value words.
+    local word
+    # shellcheck disable=SC2086
+    set -- $1
+    for word in "$@"; do
+        word="${word%\"}"; word="${word#\"}"
+        [[ "$word" == env || "$word" == *=* ]] && continue
+        echo "$word"; return
+    done
+}
+
+check_launchers() {
+    # Autostart and menu entries whose program lives under $HOME must point at an
+    # executable that exists, and never at ~/Downloads (2026-11-09: Vibe Typer).
+    local dirs=() d f line prog
+    for d in "$HOME/.config/autostart" "$HOME/.local/share/applications"; do
+        [[ -d "$d" ]] && dirs+=("$d")
+    done
+    if (( ${#dirs[@]} == 0 )); then
+        report desktop.exec SKIP "no autostart or applications directory"; return
+    fi
+    local missing=() downloads=() n=0
+    local home_real; home_real=$(cd "$HOME" && pwd -P)
+    for d in "${dirs[@]}"; do
+        for f in "$d"/*.desktop; do
+            [[ -f "$f" ]] || continue
+            while IFS= read -r line; do
+                prog=$(_exec_path "${line#Exec=}")
+                [[ "$prog" == /* ]] || continue
+                [[ "$prog" == "$HOME"/* || "$prog" == "$home_real"/* \
+                   || "$prog" == /home/* || "$prog" == /var/home/* ]] || continue
+                n=$((n + 1))
+                [[ -x "$prog" ]] || missing+=("${f##*/} → $prog")
+                [[ "$prog" == */Downloads/* ]] && downloads+=("${f##*/} → $prog")
+            done < <(grep -E '^Exec=' "$f")
+        done
+    done
+    if (( ${#missing[@]} > 0 )); then
+        report desktop.exec WARN "${#missing[@]} launcher(s) point at a missing program: ${missing[*]:0:3}" \
+            "reinstall the program (homebase setup-appimages) or fix/remove the .desktop file"
+    elif (( ${#downloads[@]} > 0 )); then
+        report desktop.exec WARN "${#downloads[@]} launcher(s) run from ~/Downloads: ${downloads[*]:0:3}" \
+            "move it to ~/AppImages, update the Exec= line, declare it in homebase.toml [appimages]"
+    else
+        report desktop.exec OK "$n launcher(s) under \$HOME point at existing programs"
+    fi
+}
+
+# ── f. appimages ──────────────────────────────────────────────────────────────
+
+check_appimages() {
+    if [[ "$(uname -s)" != Linux ]]; then
+        report appimages SKIP "not Linux"; return
+    fi
+    local parser="$CHEZMOI_SOURCE/scripts/parse-toml-array.sh" entries
+    if [[ ! -x "$parser" ]] || ! entries=$("$parser" appimages apps "$HOMEBASE_TOML" 2>/dev/null); then
+        report appimages SKIP "no [appimages] apps in $HOMEBASE_TOML"; return
+    fi
+    local file declared=() problems=() n=0 f
+    while IFS='|' read -r file _; do
+        [[ -z "$file" ]] && continue
+        n=$((n + 1)); declared+=("$file")
+        [[ -x "$APPIMAGE_DIR/$file" ]] || problems+=("$file missing")
+    done <<< "$entries"
+    for f in "$APPIMAGE_DIR"/*; do
+        [[ -f "$f" ]] || continue
+        [[ "${f,,}" == *.appimage ]] || continue
+        [[ " ${declared[*]} " == *" ${f##*/} "* ]] || problems+=("${f##*/} undeclared")
+    done
+    if (( ${#problems[@]} == 0 )); then
+        report appimages OK "$n declared AppImage(s) present in $APPIMAGE_DIR"
+    else
+        local joined; joined=$(IFS=,; echo "${problems[*]}" | sed 's/,/, /g')
+        report appimages WARN "$APPIMAGE_DIR: $joined" \
+            "missing: homebase setup-appimages; undeclared: add to homebase.toml [appimages] or delete"
+    fi
+}
+
 check_repo homebase.repo "$HOMEBASE_REPO" "working clone"
 check_repo homebase.source "$CHEZMOI_SOURCE" "chezmoi source"
 check_chezmoi
 check_images
 check_lock
+check_launchers
+check_appimages
 
 # ── output ────────────────────────────────────────────────────────────────────
 

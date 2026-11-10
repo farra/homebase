@@ -472,6 +472,36 @@ Is this worth the switch from current bash setup?
 
 ---
 
+## 11. AppImages: Where They Live and Who Updates Them — DECIDED
+
+Decided 2026-11-10. Design and review: forge
+`vault/devenv/homebase/appimages-in-homebase-2026-11-10.org`.
+
+**Problem:** Vibe Typer (dictation) ran from `~/Downloads`, where nothing declared it. Its
+autostart `Exec` pointed into a cleanup target, and when the 2026-11-09 KWin abort killed it,
+nobody knew where it lived. Homebase declared Flatpaks but not AppImages.
+
+### Decision
+
+- **Folder:** `~/AppImages`, Gear Lever's default, never `~/Downloads`.
+- **Declared** in `homebase.toml` `[appimages] apps` as `"file|updates|source"` strings. They're
+  flat strings so the pure-bash `parse-toml-array.sh` can read them on a fresh host.
+- **Homebase owns the first install only** (`homebase setup-appimages`, part of `setup-core`).
+  Updates belong to the app (`self`), Gear Lever (`gearlever`, zsync update info) or a person
+  (`manual`). No `update-appimages`, no version pins: pinning would fight self-updaters, just as
+  nix fought agent CLIs (§5).
+- **Launchers:** an app keeps the desktop files it writes for itself (Vibe Typer rewrites its
+  autostart entry from its "Launch at login" toggle). Hand-written ones go in chezmoi
+  (`dot_local/share/applications/ghostty.desktop.tmpl`, Linux-only).
+- **Doctor:** `desktop.exec` warns when an autostart or menu `Exec` under `$HOME` points at a
+  missing program or into `~/Downloads`. `appimages` warns when a declared AppImage is missing
+  or an AppImage in the folder isn't declared.
+
+Out of scope: relaunching apps after a compositor crash. Autostart runs once per login, and a
+self-updated app leaves its autostart unit, so `Restart=` wouldn't hold.
+
+---
+
 ## Summary
 
 ### Decided
@@ -488,6 +518,7 @@ Is this worth the switch from current bash setup?
 | Forge clone | Document, don't automate |
 | Windows native | Out of scope |
 | Shell | zsh interactive, bash scripts |
+| AppImages | `~/AppImages`, declared in homebase.toml; homebase installs, app/Gear Lever updates |
 
 ### Open
 
